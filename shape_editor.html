@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>고급 도형 에디터 Pro</title>
+    <title>Shape Editor Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -26,6 +26,24 @@
             #print-modal-content { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
         }
+
+        /* 토스트 알림 애니메이션 스타일 */
+        .toast-message {
+            background: rgba(31, 41, 55, 0.9);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 99px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        .toast-message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body class="flex h-screen bg-gray-50 text-gray-800 font-sans select-none overflow-hidden">
@@ -33,11 +51,11 @@
     <!-- 1. 좌측: 좁고 긴 그리기 도구 툴바 -->
     <aside class="w-20 bg-white border-r border-gray-200 flex flex-col items-center py-4 shadow-md z-20 shrink-0 gap-3">
         <div class="text-[10px] font-bold text-gray-400 mb-1">모드</div>
-        <button id="mode-draw" class="tool-btn active w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="그리기 모드">
+        <button id="mode-draw" class="tool-btn active w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="그리기 모드 (P)">
             <span class="text-xl">✏️</span>
             <span class="text-[10px] mt-1 font-medium">그리기</span>
         </button>
-        <button id="mode-select" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="선택/이동 모드">
+        <button id="mode-select" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="선택/이동 모드 (V)">
             <span class="text-xl">🖐</span>
             <span class="text-[10px] mt-1 font-medium">선택</span>
         </button>
@@ -71,7 +89,7 @@
             </div>
             
             <div class="flex space-x-3 ml-auto">
-                <button id="undo-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow transition duration-200">
+                <button id="undo-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow transition duration-200" title="되돌리기 (Ctrl+Z)">
                     ↩️ 되돌리기
                 </button>
                 <button id="clear-btn" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200">
@@ -131,11 +149,16 @@
                     <span>도형 수치 & 변수 편집</span>
                     <span class="text-[10px] text-gray-400 font-normal">표시여부 / 변수입력</span>
                 </div>
-
+                <div class="text-[10px] text-gray-500 text-center mb-1 bg-amber-50 p-2 rounded border border-amber-200">
+                    💡 입력창 선택 후 <kbd class="px-1 bg-gray-200 rounded">↑</kbd> <kbd class="px-1 bg-gray-200 rounded">↓</kbd> 또는 마우스 휠을 굴리면 <strong>도형이 실시간으로 변형</strong>됩니다. (최소 1)
+                </div>
                 <div id="multi-edit-form" class="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-[460px] overflow-y-auto"></div>
             </div>
         </div>
     </aside>
+
+    <!-- 토스트 알림 컨테이너 -->
+    <div id="toast-container" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col gap-2 z-[9999] pointer-events-none"></div>
 
     <!-- 인쇄/다운로드 미리보기 모달 -->
     <div id="print-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
@@ -234,6 +257,21 @@
             setupEvents();
             updatePanels(null); 
             updateDrawToolUI();
+        }
+
+        // 토스트 알림 기능
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.innerText = message;
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 1500);
         }
 
         function generateId() { return 'shape_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9); }
@@ -761,7 +799,15 @@
             const rect = canvas.getBoundingClientRect();
             let clientX = e.touches ? e.touches[0].clientX : e.clientX;
             let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            
+            // CSS 렌더링 크기 대비 캔버스 비트맵 크기 비율 계산
+            const scaleX = (canvas.width / (window.devicePixelRatio || 1)) / rect.width;
+            const scaleY = (canvas.height / (window.devicePixelRatio || 1)) / rect.height;
+
+            return { 
+                x: (clientX - rect.left) * scaleX, 
+                y: (clientY - rect.top) * scaleY 
+            };
         }
         function getLogicalPos(pos) { 
             return { x: (pos.x - originX) / globalScale, y: (pos.y - originY) / globalScale }; 
@@ -783,7 +829,6 @@
             
             const physicalPos = getPointerPos(e); 
             
-            // 패닝(Panning) 시작 처리
             if (isSpaceDown) {
                 isPanning = true;
                 panStartX = physicalPos.x - originX;
@@ -825,7 +870,6 @@
         function handlePointerMove(e) {
             const physicalPos = getPointerPos(e); 
             
-            // 패닝(Panning) 이동 처리
             if (isPanning) {
                 originX = physicalPos.x - panStartX;
                 originY = physicalPos.y - panStartY;
@@ -931,7 +975,6 @@
         function handlePointerUp(e) {
             if (e.button !== 0) return;
             
-            // 패닝(Panning) 종료 처리
             if (isPanning) {
                 isPanning = false;
                 canvas.style.cursor = isSpaceDown ? 'grab' : (mode === 'draw' ? 'crosshair' : 'default');
@@ -992,7 +1035,7 @@
 
         function handleContextMenu(e) {
             e.preventDefault();
-            if (isPanning) return; // 패닝 중에는 컨텍스트 메뉴 차단
+            if (isPanning) return; 
             
             const physicalPos = getPointerPos(e);
             const pos = getLogicalPos(physicalPos);
@@ -1168,6 +1211,34 @@
             updateDrawToolUI();
         }
 
+        // Stepper (Scrubbing) 제어 함수
+        function handleStepper(event, sIdx, vIdx, type) {
+            if (event.type === 'keydown' && event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+            if (event.type === 'wheel') event.preventDefault(); 
+            
+            const valStr = event.target.value.replace(/[^0-9.-]/g, '');
+            let val = parseFloat(valStr);
+            if (isNaN(val)) return;
+
+            let delta = 0;
+            if (event.key === 'ArrowUp' || (event.type === 'wheel' && event.deltaY < 0)) delta = 1;
+            else if (event.key === 'ArrowDown' || (event.type === 'wheel' && event.deltaY > 0)) delta = -1;
+
+            if (delta !== 0) {
+                event.preventDefault(); 
+                let newVal = val + delta;
+                
+                // 1 미만 방지 (0, 음수 불가)
+                if (newVal < 1) newVal = 1;
+
+                // 입력 필드 안에는 순수 수치만 유지
+                event.target.value = newVal.toFixed(1);
+                
+                if (type === 'angle') applySingleAngle(sIdx, vIdx, true);
+                else applySingleLength(sIdx, vIdx, true);
+            }
+        }
+
         function updatePanels(sIdx, isSyncOnly = false) {
             if (sIdx === null || sIdx < 0 || sIdx >= shapes.length) {
                 canvasPropsContent.classList.remove('hidden');
@@ -1207,7 +1278,7 @@
                             let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
                             let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
                             if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
-                            input.value = (interiorAngle * 180 / Math.PI).toFixed(1) + '°';
+                            input.value = (interiorAngle * 180 / Math.PI).toFixed(1);
                         }
                     });
                 }
@@ -1220,7 +1291,7 @@
                     if (input && document.activeElement !== input && !shape[v1].customLength) {
                         const p1 = shape[v1], p2 = shape[v2];
                         const currLenPx = Math.sqrt(dist2(p1, p2));
-                        input.value = (currLenPx / 50).toFixed(1) + ' cm';
+                        input.value = (currLenPx / 50).toFixed(1);
                     }
                 });
                 return;
@@ -1245,22 +1316,25 @@
                     let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
                     let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
                     if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
-                    let currentDeg = (interiorAngle * 180 / Math.PI).toFixed(1) + '°';
+                    let currentDeg = (interiorAngle * 180 / Math.PI).toFixed(1);
                     const displayVal = v.customAngle !== undefined ? v.customAngle : currentDeg;
 
                     const row = document.createElement('div');
                     row.className = "flex items-center justify-between text-xs gap-1";
                     row.innerHTML = `
-                        <div class="flex items-center space-x-1.5">
+                        <div class="flex items-center space-x-1.5 min-w-[55px]">
                             <input type="checkbox" onchange="toggleAngleVisible(${sIdx}, ${idx}, this.checked)" ${v.showAngle !== false ? 'checked' : ''} 
                                 class="form-checkbox h-3.5 w-3.5 text-amber-600 rounded cursor-pointer" title="표시 여부">
                             <label class="font-medium text-gray-700">각 ${v.label}</label>
                         </div>
                         <div class="flex items-center space-x-1 flex-1 justify-end">
-                            <input type="text" data-vidx="${idx}" value="${displayVal}" placeholder="예: 60° 또는 x" 
+                            <input type="text" data-vidx="${idx}" value="${displayVal}" placeholder="60 또는 x" 
                                 class="angle-input w-full px-2 py-1 border rounded bg-white text-right focus:ring-1 focus:ring-amber-500 font-mono text-xs"
+                                oninput="applySingleAngle(${sIdx}, ${idx}, true)"
                                 onchange="applySingleAngle(${sIdx}, ${idx})"
-                                onkeydown="if(event.key === 'Enter') this.blur();">
+                                onkeydown="handleStepper(event, ${sIdx}, ${idx}, 'angle'); if(event.key === 'Enter') this.blur();"
+                                onwheel="handleStepper(event, ${sIdx}, ${idx}, 'angle')">
+                            <span class="text-gray-500 font-semibold w-4 text-center select-none">°</span>
                         </div>
                     `;
                     multiEditForm.appendChild(row);
@@ -1279,7 +1353,7 @@
             edges.forEach(([v1, v2]) => {
                 const p1 = shape[v1], p2 = shape[v2];
                 const currLenPx = Math.sqrt(dist2(p1, p2));
-                const currLenCm = (currLenPx / 50).toFixed(1) + ' cm';
+                const currLenCm = (currLenPx / 50).toFixed(1);
                 const labelText = isCircle ? `반지름 ${p1.label}${p2.label}` : `변 ${p1.label}${p2.label}`;
                 const displayVal = p1.customLength !== undefined ? p1.customLength : currLenCm;
 
@@ -1292,10 +1366,13 @@
                         <label class="font-medium text-gray-700 truncate">${labelText}</label>
                     </div>
                     <div class="flex items-center space-x-1 flex-1 justify-end">
-                        <input type="text" data-vidx="${v1}" value="${displayVal}" placeholder="예: 3cm 또는 r" 
+                        <input type="text" data-vidx="${v1}" value="${displayVal}" placeholder="3 또는 r" 
                             class="length-input w-full px-2 py-1 border rounded bg-white text-right focus:ring-1 focus:ring-indigo-500 font-mono text-xs"
+                            oninput="applySingleLength(${sIdx}, ${v1}, true)"
                             onchange="applySingleLength(${sIdx}, ${v1})"
-                            onkeydown="if(event.key === 'Enter') this.blur();">
+                            onkeydown="handleStepper(event, ${sIdx}, ${v1}, 'length'); if(event.key === 'Enter') this.blur();"
+                            onwheel="handleStepper(event, ${sIdx}, ${v1}, 'length')">
+                        <span class="text-gray-500 font-semibold text-[11px] select-none pl-0.5">cm</span>
                     </div>
                 `;
                 multiEditForm.appendChild(row);
@@ -1310,16 +1387,22 @@
             if (shapes[sIdx] && shapes[sIdx][vIdx]) { shapes[sIdx][vIdx].showLength = isChecked; draw(); }
         }
 
-        function applySingleAngle(sIdx, vIdx) {
+        function applySingleAngle(sIdx, vIdx, isSyncOnly = false) {
             const shape = shapes[sIdx];
             if (!shape || shape.length < 3) return;
             const input = multiEditForm.querySelector(`.angle-input[data-vidx="${vIdx}"]`);
             if (!input) return;
 
             const valStr = input.value.trim();
-            const numVal = parseFloat(valStr);
+            let numVal = parseFloat(valStr);
 
             if (!isNaN(numVal) && !/[a-zA-Z가-힣]/.test(valStr)) {
+                // 1 미만 방지 (0, 음수 불가)
+                if (numVal < 1) {
+                    numVal = 1;
+                    if (!isSyncOnly) input.value = '1.0';
+                }
+
                 shape[vIdx].customAngle = undefined;
                 const p = shape[vIdx];
                 const pPrev = shape[(vIdx - 1 + shape.length) % shape.length];
@@ -1337,25 +1420,34 @@
                 let diffRad = (numVal - currentDeg) * Math.PI / 180;
                 let rotRad = isCW ? -diffRad : diffRad;
 
+                let distNext = Math.sqrt(dist2(p, pNext));
+                if (distNext === 0) distNext = 50;
+
                 let nx = p.x + (pNext.x - p.x) * Math.cos(rotRad) - (pNext.y - p.y) * Math.sin(rotRad);
                 let ny = p.y + (pNext.x - p.x) * Math.sin(rotRad) + (pNext.y - p.y) * Math.cos(rotRad);
 
                 pNext.x = nx; pNext.y = ny;
             } else { shape[vIdx].customAngle = valStr; }
 
-            applyConstraints(); saveHistory(); draw(); updatePanels(sIdx);
+            applyConstraints(); saveHistory(); draw(); updatePanels(sIdx, isSyncOnly);
         }
 
-        function applySingleLength(sIdx, vIdx) {
+        function applySingleLength(sIdx, vIdx, isSyncOnly = false) {
             const shape = shapes[sIdx];
             if (!shape) return;
             const input = multiEditForm.querySelector(`.length-input[data-vidx="${vIdx}"]`);
             if (!input) return;
 
             const valStr = input.value.trim();
-            const numVal = parseFloat(valStr);
+            let numVal = parseFloat(valStr);
 
             if (!isNaN(numVal) && !/[a-zA-Z가-힣]/.test(valStr)) {
+                // 1 미만 방지 (0, 음수 불가)
+                if (numVal < 1) {
+                    numVal = 1;
+                    if (!isSyncOnly) input.value = '1.0';
+                }
+
                 shape[vIdx].customLength = undefined;
                 const p1 = shape[vIdx];
                 let nextIdx = (vIdx + 1) % shape.length;
@@ -1371,7 +1463,7 @@
                 }
             } else { shape[vIdx].customLength = valStr; }
 
-            applyConstraints(); saveHistory(); draw(); updatePanels(sIdx);
+            applyConstraints(); saveHistory(); draw(); updatePanels(sIdx, isSyncOnly);
         }
 
         function deleteShape(index) {
@@ -1408,41 +1500,62 @@
                 shapes.push(newShape); saveHistory(); draw();
             });
 
-            undoBtn.addEventListener('click', undo);
+            undoBtn.addEventListener('click', () => { undo(); showToast('↩️ 실행 취소'); });
             clearBtn.addEventListener('click', () => { shapes = []; currentShape = []; globalVertexCount = 0; lockedShapeIndex = null; selectionBox = null; saveHistory(); draw(); updatePanels(null); });
             showGridCheck.addEventListener('change', draw);
             showRulerCheck.addEventListener('change', draw);
             
-            // --- 줌 & 패닝 이벤트 리스너 추가 ---
-            
-            // 1. Ctrl + 마우스 휠 (줌 인/아웃)
+            // 줌 이벤트 리스너 추가
             canvas.addEventListener('wheel', (e) => {
                 if (e.ctrlKey) {
-                    e.preventDefault(); // 브라우저 기본 확대 방지
+                    e.preventDefault(); 
                     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
                     
                     const physicalPos = getPointerPos(e);
                     const mouseX = physicalPos.x;
                     const mouseY = physicalPos.y;
 
-                    // 마우스 포인터 기준으로 origin(오프셋) 재조정
                     originX = mouseX - (mouseX - originX) * zoomFactor;
                     originY = mouseY - (mouseY - originY) * zoomFactor;
                     
                     globalScale *= zoomFactor;
-                    globalScale = Math.max(0.1, Math.min(globalScale, 10)); // 최소 10% ~ 최대 1000% 제한
+                    globalScale = Math.max(0.1, Math.min(globalScale, 10)); 
                     
                     draw();
                 }
             }, { passive: false });
             
-            // 2. Spacebar 상태 감지 (입력 필드 제외)
+            // 키보드 단축키
             window.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
-                    e.preventDefault(); // 스크롤 방지
+                // 입력 필드 포커스 중에는 단축키 무시
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                const key = e.key.toLowerCase();
+
+                if (e.code === 'Space') {
+                    e.preventDefault(); 
                     if (!isSpaceDown) {
                         isSpaceDown = true;
                         if (!dragState) canvas.style.cursor = 'grab';
+                    }
+                }
+                else if ((e.ctrlKey || e.metaKey) && key === 'z') {
+                    e.preventDefault();
+                    undo();
+                    showToast('↩️ 실행 취소');
+                }
+                else if (key === 'v') {
+                    setMode('select');
+                    showToast('🖐 선택 모드 (V)');
+                }
+                else if (key === 'p') {
+                    setMode('draw');
+                    showToast('✏️ 그리기 모드 (P)');
+                }
+                else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (lockedShapeIndex !== null) {
+                        deleteShape(lockedShapeIndex);
+                        showToast('🗑️ 도형 삭제됨');
                     }
                 }
             });
@@ -1456,8 +1569,6 @@
                 }
             });
             
-            // ------------------------------------
-
             canvas.addEventListener('mousedown', handlePointerDown);
             canvas.addEventListener('mousemove', handlePointerMove);
             canvas.addEventListener('contextmenu', handleContextMenu);
@@ -1474,7 +1585,6 @@
                     hoverState = null; 
                     updatePanels(null); 
                 }
-                // 패닝 중 캔버스를 벗어나면 패닝 종료
                 if (isPanning) {
                     isPanning = false;
                     canvas.style.cursor = isSpaceDown ? 'grab' : (mode === 'draw' ? 'crosshair' : 'default');

@@ -75,7 +75,7 @@
             <span class="text-xl">⭕</span>
             <span class="text-[10px] mt-1 font-medium">원</span>
         </button>
-        <button id="draw-regular-polygon-btn" class="w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm mt-2" title="정다각형">
+        <button id="draw-regular-polygon-btn" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm mt-2" title="정다각형">
             <span class="text-xl">🌟</span>
             <span class="text-[9px] mt-1 font-bold">정다각형</span>
         </button>
@@ -88,7 +88,16 @@
                 <h1 class="text-xl font-bold text-indigo-600 mr-4">Shape Editor Pro</h1>
             </div>
             
-            <div class="flex space-x-3 ml-auto">
+            <div class="flex space-x-3 ml-auto flex-wrap">
+                <button id="print-selected-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200 flex items-center gap-1.5" title="선택한 도형 인쇄하기">
+                    🖨️ 선택 도형 인쇄
+                </button>
+                <button id="group-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200" title="그룹 묶기 (Ctrl+G)">
+                    📦 그룹 묶기
+                </button>
+                <button id="ungroup-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200" title="그룹 해제 (Ctrl+Shift+G)">
+                    🔓 그룹 해제
+                </button>
                 <button id="undo-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow transition duration-200" title="되돌리기 (Ctrl+Z)">
                     ↩️ 되돌리기
                 </button>
@@ -192,6 +201,9 @@
         const ctx = canvas.getContext('2d');
         const undoBtn = document.getElementById('undo-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const groupBtn = document.getElementById('group-btn');
+        const ungroupBtn = document.getElementById('ungroup-btn');
+        const printSelectedBtn = document.getElementById('print-selected-btn');
         const instructionBanner = document.getElementById('instruction-banner');
 
         // 좌측 도구 버튼
@@ -201,7 +213,7 @@
         const drawLineBtn = document.getElementById('draw-line-btn');
         const drawCircleBtn = document.getElementById('draw-circle-btn');
         const drawRegularPolygonBtn = document.getElementById('draw-regular-polygon-btn');
-        const drawBtns = [drawPolygonBtn, drawLineBtn, drawCircleBtn];
+        const drawBtns = [drawPolygonBtn, drawLineBtn, drawCircleBtn, drawRegularPolygonBtn];
 
         // 우측 패널 제어
         const sidebarTitle = document.getElementById('sidebar-title');
@@ -229,6 +241,7 @@
 
         let mode = 'draw'; 
         let drawType = 'polygon'; 
+        let regularPolyParams = null; // 정다각형 생성 대기 파라미터 { sides, lengthCm }
         let shapes = []; 
         let currentShape = []; 
         let history = []; 
@@ -246,9 +259,24 @@
         const closeThreshold = 15; 
         let hoverState = null; 
         let dragState = null;  
-        let lockedShapeIndex = null;
+        let selectedShapeIndices = []; // 다중 선택 인덱스 배열
         let activePanelShapeIndex = null;
         let selectionBox = null;
+        let lastMouseLogicalPos = { x: 0, y: 0 }; 
+
+        // 단일 선택 호환성을 위한 게터/세터
+        Object.defineProperty(window, 'lockedShapeIndex', {
+            get() {
+                return selectedShapeIndices.length === 1 ? selectedShapeIndices[0] : null;
+            },
+            set(val) {
+                if (val === null || val === undefined) {
+                    selectedShapeIndices = [];
+                } else {
+                    selectedShapeIndices = [val];
+                }
+            }
+        });
 
         function init() {
             saveHistory(); 
@@ -259,7 +287,23 @@
             updateDrawToolUI();
         }
 
-        // 토스트 알림 기능
+        function getShapeName(shape) {
+            if (!shape || shape.length === 0) return "도형";
+            const shapeType = shape.type || 'polygon';
+            if (shapeType === 'circle') {
+                const centerLabel = shape[0] && shape[0].label ? shape[0].label : 'O';
+                return `원 ${centerLabel}`;
+            } else if (shapeType === 'line') {
+                const l1 = shape[0] && shape[0].label ? shape[0].label : '';
+                const l2 = shape[1] && shape[1].label ? shape[1].label : '';
+                return `선분 ${l1}${l2}`;
+            } else if (shapeType === 'polygon') {
+                const labels = shape.map(p => p.label || '').join('');
+                return `다각형 ${labels}`;
+            }
+            return "도형";
+        }
+
         function showToast(message) {
             const toast = document.createElement('div');
             toast.className = 'toast-message';
@@ -283,7 +327,7 @@
 
         function saveHistory() {
             const state = {
-                shapes: shapes.map(s => { const arr = JSON.parse(JSON.stringify(s)); arr.type = s.type; arr.id = s.id; return arr; }),
+                shapes: shapes.map(s => { const arr = JSON.parse(JSON.stringify(s)); arr.type = s.type; arr.id = s.id; arr.groupId = s.groupId; return arr; }),
                 currentShape: JSON.parse(JSON.stringify(currentShape)),
                 globalVertexCount: globalVertexCount
             };
@@ -295,10 +339,10 @@
             if (history.length > 1) {
                 history.pop();
                 const prevState = history[history.length - 1];
-                shapes = prevState.shapes.map(s => { const arr = JSON.parse(JSON.stringify(s)); arr.type = s.type; arr.id = s.id; return arr; });
+                shapes = prevState.shapes.map(s => { const arr = JSON.parse(JSON.stringify(s)); arr.type = s.type; arr.id = s.id; arr.groupId = s.groupId; return arr; });
                 currentShape = JSON.parse(JSON.stringify(prevState.currentShape));
                 globalVertexCount = prevState.globalVertexCount;
-                dragState = null; hoverState = null; lockedShapeIndex = null; selectionBox = null;
+                dragState = null; hoverState = null; selectedShapeIndices = []; selectionBox = null;
                 updatePanels(null); applyConstraints(); draw();
             }
         }
@@ -383,6 +427,31 @@
                 maxX: maxX + pad, maxY: maxY + pad, 
                 cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 
             };
+        }
+
+        function getMultipleShapesBounds(indices) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            indices.forEach(idx => {
+                const s = shapes[idx];
+                if (!s) return;
+                const b = getShapeBounds(s);
+                if (b.minX < minX) minX = b.minX;
+                if (b.minY < minY) minY = b.minY;
+                if (b.maxX > maxX) maxX = b.maxX;
+                if (b.maxY > maxY) maxY = b.maxY;
+            });
+            if (minX === Infinity) return null;
+            return { minX, minY, maxX, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+        }
+
+        function isShapeInBox(shape, box) {
+            const minX = Math.min(box.startX, box.endX);
+            const maxX = Math.max(box.startX, box.endX);
+            const minY = Math.min(box.startY, box.endY);
+            const maxY = Math.max(box.startY, box.endY);
+
+            const b = getShapeBounds(shape);
+            return b.minX >= minX && b.maxX <= maxX && b.minY >= minY && b.maxY <= maxY;
         }
 
         function getPolygonArea(points) {
@@ -487,7 +556,7 @@
             ctx.restore();
         }
 
-        function draw(isPrintPreview = false) {
+        function draw(isPrintPreview = false, targetIndicesOnly = null) {
             const rect = canvasContainer.getBoundingClientRect();
             ctx.clearRect(0, 0, rect.width, rect.height);
             ctx.save(); ctx.translate(originX, originY); ctx.scale(globalScale, globalScale);
@@ -496,12 +565,16 @@
 
             shapes.forEach((shape, sIdx) => {
                 if (shape.length === 0) return;
+                // 인쇄 미리보기 시 지정된 인덱스만 렌더링
+                if (targetIndicesOnly && !targetIndicesOnly.includes(sIdx)) return;
+
                 const shapeType = shape.type || 'polygon';
                 
                 const isHovered = (hoverState && hoverState.shapeIndex === sIdx);
+                const isSelected = selectedShapeIndices.includes(sIdx);
                 const isLocked = (lockedShapeIndex === sIdx);
 
-                if (isLocked && !isPrintPreview) {
+                if (isSelected && !isPrintPreview) {
                     ctx.fillStyle = 'rgba(79, 70, 229, 0.25)'; ctx.strokeStyle = '#4338ca'; ctx.lineWidth = 4 / globalScale;
                 } else if (isHovered && !isPrintPreview) {
                     ctx.fillStyle = 'rgba(99, 102, 241, 0.15)'; ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 3.5 / globalScale;
@@ -661,7 +734,28 @@
                     }
                 });
 
-                if (isLocked && !isPrintPreview) {
+                // 호버 피드백 하이라이트 (외곽 강조 피드백)
+                if (isHovered && !isSelected && !isPrintPreview) {
+                    ctx.save();
+                    ctx.strokeStyle = '#6366f1';
+                    ctx.lineWidth = 2.5 / globalScale;
+                    ctx.setLineDash([6 / globalScale, 4 / globalScale]);
+                    ctx.fillStyle = 'rgba(99, 102, 241, 0.08)';
+
+                    if (shapeType === 'polygon') {
+                        ctx.beginPath(); ctx.moveTo(shape[0].x, shape[0].y);
+                        for (let i = 1; i < shape.length; i++) ctx.lineTo(shape[i].x, shape[i].y);
+                        ctx.closePath(); ctx.fill(); ctx.stroke();
+                    } else if (shapeType === 'circle') {
+                        const center = shape[0], edgePoint = shape[1], r = Math.sqrt(dist2(center, edgePoint));
+                        ctx.beginPath(); ctx.arc(center.x, center.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    } else if (shapeType === 'line') {
+                        ctx.beginPath(); ctx.moveTo(shape[0].x, shape[0].y); ctx.lineTo(shape[1].x, shape[1].y); ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                if (isLocked && !isPrintPreview && selectedShapeIndices.length === 1) {
                     const bounds = getShapeBounds(shape);
                     ctx.save();
                     
@@ -686,6 +780,59 @@
                     ctx.restore();
                 }
             });
+
+            // 다중 선택 바운딩 박스 표시
+            if (selectedShapeIndices.length > 1 && !isPrintPreview) {
+                const multiBounds = getMultipleShapesBounds(selectedShapeIndices);
+                if (multiBounds) {
+                    ctx.save();
+                    ctx.strokeStyle = '#4f46e5';
+                    ctx.lineWidth = 1.5 / globalScale;
+                    ctx.setLineDash([4 / globalScale, 4 / globalScale]);
+                    ctx.strokeRect(multiBounds.minX, multiBounds.minY, multiBounds.maxX - multiBounds.minX, multiBounds.maxY - multiBounds.minY);
+                    ctx.restore();
+                }
+            }
+
+            // 호버 뱃지(도형 이름 툴팁) 표시 렌더링
+            if (hoverState && hoverState.shapeIndex !== undefined && hoverState.shapeIndex >= 0 && !isPrintPreview && !dragState) {
+                const hoveredShape = shapes[hoverState.shapeIndex];
+                if (hoveredShape) {
+                    const shapeName = getShapeName(hoveredShape);
+                    const mouseX = lastMouseLogicalPos.x;
+                    const mouseY = lastMouseLogicalPos.y;
+
+                    ctx.save();
+                    const fontSize = 12 / globalScale;
+                    ctx.font = `bold ${fontSize}px sans-serif`;
+                    const paddingX = 8 / globalScale;
+                    const paddingY = 4 / globalScale;
+                    const textWidth = ctx.measureText(shapeName).width;
+                    const badgeW = textWidth + paddingX * 2;
+                    const badgeH = fontSize + paddingY * 2;
+                    
+                    const badgeX = mouseX + (12 / globalScale);
+                    const badgeY = mouseY + (12 / globalScale);
+
+                    ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+                    ctx.shadowBlur = 4 / globalScale;
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4 / globalScale);
+                    } else {
+                        ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                    }
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(shapeName, badgeX + paddingX, badgeY + paddingY);
+                    ctx.restore();
+                }
+            }
 
             if (currentShape.length > 0 && !isPrintPreview) {
                 if (drawType === 'polygon' || drawType === 'line') {
@@ -744,7 +891,7 @@
             const p = {x, y};
             const clickTol = 6 / globalScale;
             
-            if (lockedShapeIndex !== null && lockedShapeIndex !== ignoreShapeIndex) {
+            if (lockedShapeIndex !== null && lockedShapeIndex !== ignoreShapeIndex && selectedShapeIndices.length === 1) {
                 const bounds = getShapeBounds(shapes[lockedShapeIndex]);
                 const hw = 6 / globalScale; 
                 const handles = [
@@ -800,7 +947,6 @@
             let clientX = e.touches ? e.touches[0].clientX : e.clientX;
             let clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            // CSS 렌더링 크기 대비 캔버스 비트맵 크기 비율 계산
             const scaleX = (canvas.width / (window.devicePixelRatio || 1)) / rect.width;
             const scaleY = (canvas.height / (window.devicePixelRatio || 1)) / rect.height;
 
@@ -817,10 +963,24 @@
             if (index >= 0 && index < shapes.length - 1) {
                 const shapeToMove = shapes.splice(index, 1)[0];
                 shapes.push(shapeToMove);
-                if(lockedShapeIndex === index) lockedShapeIndex = shapes.length - 1;
+                const foundPos = selectedShapeIndices.indexOf(index);
+                if (foundPos !== -1) {
+                    selectedShapeIndices[foundPos] = shapes.length - 1;
+                }
                 return shapes.length - 1;
             }
             return index;
+        }
+
+        function getGroupIndices(shapeIndex) {
+            const target = shapes[shapeIndex];
+            if (!target || !target.groupId) return [shapeIndex];
+            const gId = target.groupId;
+            const result = [];
+            shapes.forEach((s, idx) => {
+                if (s.groupId === gId) result.push(idx);
+            });
+            return result;
         }
 
         function handlePointerDown(e) {
@@ -845,21 +1005,51 @@
                     const newIdx = bringShapeToFront(target.shapeIndex);
                     target.shapeIndex = newIdx;
                 }
+
+                const hitGroupIndices = getGroupIndices(target.shapeIndex);
+
+                if (e.shiftKey) {
+                    // Shift + 클릭: 기존 선택 토글 / 다중 선택 확장
+                    hitGroupIndices.forEach(idx => {
+                        const existingIdx = selectedShapeIndices.indexOf(idx);
+                        if (existingIdx !== -1) {
+                            selectedShapeIndices.splice(existingIdx, 1);
+                        } else {
+                            selectedShapeIndices.push(idx);
+                        }
+                    });
+                } else {
+                    // 선택되지 않은 도형 클릭 시 단일/그룹 선택으로 갱신
+                    const isAlreadySelected = hitGroupIndices.every(idx => selectedShapeIndices.includes(idx));
+                    if (!isAlreadySelected) {
+                        selectedShapeIndices = [...hitGroupIndices];
+                    }
+                }
                 
-                lockedShapeIndex = target.shapeIndex;
                 setMode('select');
                 updatePanels(lockedShapeIndex);
                 draw();
 
                 const shape = shapes[target.shapeIndex];
                 dragState = { ...target, startX: pos.x, startY: pos.y, moved: false };
-                
-                if (target.type === 'vertex') dragState.origV = { ...shape[target.vertexIndex] };
-                else if (target.type === 'edge') { dragState.origV1 = { ...shape[target.v1] }; dragState.origV2 = { ...shape[target.v2] }; } 
-                else if (target.type === 'shape' || target.type === 'bb_handle') dragState.origShape = shape.map(p => ({...p}));
+
+                if (selectedShapeIndices.length > 1 && (target.type === 'shape' || target.type === 'edge' || target.type === 'vertex')) {
+                    dragState.type = 'multi_shapes';
+                    dragState.origMultiShapes = selectedShapeIndices.map(sIdx => ({
+                        index: sIdx,
+                        shape: shapes[sIdx].map(p => ({ ...p }))
+                    }));
+                } else if (target.type === 'vertex') {
+                    dragState.origV = { ...shape[target.vertexIndex] };
+                } else if (target.type === 'edge') {
+                    dragState.origV1 = { ...shape[target.v1] }; 
+                    dragState.origV2 = { ...shape[target.v2] };
+                } else if (target.type === 'shape' || target.type === 'bb_handle') {
+                    dragState.origShape = shape.map(p => ({...p}));
+                }
             } else {
-                if (mode === 'select') {
-                    lockedShapeIndex = null;
+                if (mode === 'select' && !e.shiftKey) {
+                    selectedShapeIndices = [];
                     updatePanels(null);
                     draw();
                 }
@@ -878,10 +1068,12 @@
             }
             
             const pos = getLogicalPos(physicalPos); 
+            lastMouseLogicalPos = pos;
+
             const target = getHitTarget(pos.x, pos.y, dragState && dragState.shapeIndex !== undefined ? dragState.shapeIndex : -1);
             hoverState = target;
 
-            if (lockedShapeIndex === null) {
+            if (selectedShapeIndices.length !== 1) {
                 let activeShapeIndex = target ? target.shapeIndex : null;
                 updatePanels(activeShapeIndex);
             } else {
@@ -905,9 +1097,30 @@
                             endX: pos.x,
                             endY: pos.y
                         };
+
+                        if (mode === 'select') {
+                            const newSelected = [];
+                            shapes.forEach((s, idx) => {
+                                if (isShapeInBox(s, selectionBox)) {
+                                    newSelected.push(idx);
+                                }
+                            });
+                            selectedShapeIndices = newSelected;
+                            updatePanels(lockedShapeIndex);
+                        }
                     } else {
                         const shape = shapes[dragState.shapeIndex];
-                        if (dragState.type === 'bb_handle') {
+                        if (dragState.type === 'multi_shapes') {
+                            dragState.origMultiShapes.forEach(item => {
+                                const targetS = shapes[item.index];
+                                for (let i = 0; i < targetS.length; i++) {
+                                    targetS[i].x = item.shape[i].x + dx;
+                                    targetS[i].y = item.shape[i].y + dy;
+                                }
+                            });
+                            applyConstraints();
+                        }
+                        else if (dragState.type === 'bb_handle') {
                             const origCx = dragState.cx;
                             const origCy = dragState.cy;
                             const startDist = Math.sqrt(Math.pow(dragState.startX - origCx, 2) + Math.pow(dragState.startY - origCy, 2));
@@ -965,8 +1178,14 @@
                     else if (hIdx === 2 || hIdx === 6) canvas.style.cursor = 'nesw-resize';
                     else if (hIdx === 1 || hIdx === 5) canvas.style.cursor = 'ns-resize';
                     else if (hIdx === 3 || hIdx === 7) canvas.style.cursor = 'ew-resize';
-                } else {
+                } else if (target.type === 'vertex') {
+                    canvas.style.cursor = 'pointer';
+                } else if (target.type === 'edge' || target.type === 'circle_edge') {
+                    canvas.style.cursor = 'crosshair';
+                } else if (target.type === 'shape') {
                     canvas.style.cursor = 'move';
+                } else {
+                    canvas.style.cursor = (mode === 'draw' ? 'crosshair' : 'default');
                 }
                 draw();
             }
@@ -987,7 +1206,11 @@
 
                 if (wasMoved) {
                     if (dragState.type === 'selection' && selectionBox) {
-                        openPrintPreview();
+                        if (mode === 'draw') {
+                            openPrintPreview();
+                        } else {
+                            selectionBox = null;
+                        }
                     } else if (dragState.type !== 'selection') {
                         saveHistory();
                         if (dragState.type === 'bb_handle') {
@@ -996,6 +1219,39 @@
                     }
                 } else {
                     if (mode === 'draw') {
+                        // 정다각형 생성 대기 상태일 경우: 클릭 위치를 중심점으로 정다각형 생성
+                        if (drawType === 'regular' && regularPolyParams) {
+                            const { numSides, sideLenCm } = regularPolyParams;
+                            const sideLenPx = sideLenCm * 50;
+                            const R = sideLenPx / (2 * Math.sin(Math.PI / numSides));
+                            const cx = pos.x, cy = pos.y;
+                            
+                            const newShape = []; 
+                            newShape.type = 'polygon'; 
+                            newShape.id = generateId();
+                            
+                            for (let i = 0; i < numSides; i++) {
+                                const angle = (2 * Math.PI * i / numSides) - Math.PI / 2;
+                                newShape.push({ 
+                                    x: cx + R * Math.cos(angle), 
+                                    y: cy + R * Math.sin(angle), 
+                                    showAngle: defaultAngleCheck.checked, 
+                                    showLength: defaultLengthCheck.checked, 
+                                    label: getAlphabetLabel(globalVertexCount++) 
+                                });
+                            }
+                            shapes.push(newShape); 
+                            saveHistory(); 
+                            draw();
+                            showToast(`🌟 중심점 (X:${Math.round(cx)}, Y:${Math.round(cy)})에 ${numSides}각형 생성됨`);
+                            
+                            // 대기 상태 초기화 후 다각형 기본 그리기 모드로 전환
+                            regularPolyParams = null;
+                            setDrawType('polygon');
+                            dragState = null;
+                            return;
+                        }
+
                         let closed = false;
                         if (drawType === 'polygon' && currentShape.length > 2) {
                             const startPoint = currentShape[0];
@@ -1042,27 +1298,64 @@
             const target = getHitTarget(pos.x, pos.y);
 
             if (target) {
-                lockedShapeIndex = target.shapeIndex;
+                const hitGroupIndices = getGroupIndices(target.shapeIndex);
+                if (!hitGroupIndices.every(idx => selectedShapeIndices.includes(idx))) {
+                    selectedShapeIndices = [...hitGroupIndices];
+                }
+
                 setMode('select');
                 updatePanels(lockedShapeIndex);
                 draw();
 
                 contextMenu.innerHTML = '';
 
+                // 선택된 도형 인쇄 메뉴 항목
+                const printItem = document.createElement('button');
+                printItem.className = 'w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-700 flex items-center gap-2 border-b border-gray-100 font-semibold';
+                printItem.innerHTML = '<span>🖨️</span> 선택 도형 인쇄';
+                printItem.onclick = () => {
+                    printSelectedShapes();
+                    contextMenu.classList.add('hidden');
+                };
+                contextMenu.appendChild(printItem);
+
+                // 그룹 묶기 / 그룹 해제 컨텍스트 버튼
+                if (selectedShapeIndices.length >= 2) {
+                    const groupItem = document.createElement('button');
+                    groupItem.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2 border-b border-gray-100';
+                    groupItem.innerHTML = '<span>📦</span> 그룹 묶기';
+                    groupItem.onclick = () => {
+                        groupSelectedShapes();
+                        contextMenu.classList.add('hidden');
+                    };
+                    contextMenu.appendChild(groupItem);
+                }
+
+                const hasGrouped = selectedShapeIndices.some(idx => shapes[idx] && shapes[idx].groupId);
+                if (hasGrouped) {
+                    const ungroupItem = document.createElement('button');
+                    ungroupItem.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2 border-b border-gray-100';
+                    ungroupItem.innerHTML = '<span>🔓</span> 그룹 해제';
+                    ungroupItem.onclick = () => {
+                        ungroupSelectedShapes();
+                        contextMenu.classList.add('hidden');
+                    };
+                    contextMenu.appendChild(ungroupItem);
+                }
+
                 const bringFrontBtn = document.createElement('button');
                 bringFrontBtn.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2';
                 bringFrontBtn.innerHTML = '<span>🔼</span> 맨 앞으로 가져오기';
                 bringFrontBtn.onclick = () => {
                     const newIdx = bringShapeToFront(target.shapeIndex);
-                    lockedShapeIndex = newIdx;
-                    updatePanels(newIdx);
+                    updatePanels(lockedShapeIndex);
                     draw();
                     contextMenu.classList.add('hidden');
                 };
                 contextMenu.appendChild(bringFrontBtn);
 
                 const shape = shapes[target.shapeIndex];
-                if ((shape.type === 'polygon' || !shape.type) && shape.length >= 3) {
+                if ((shape.type === 'polygon' || !shape.type) && shape.length >= 3 && selectedShapeIndices.length === 1) {
                     const makeRegBtn = document.createElement('button');
                     makeRegBtn.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2 border-b border-gray-100';
                     makeRegBtn.innerHTML = '<span>🌟</span> 정다각형으로 변환';
@@ -1077,7 +1370,7 @@
                 deleteBtn.className = 'w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 mt-1';
                 deleteBtn.innerHTML = '<span>🗑️</span> 삭제';
                 deleteBtn.onclick = () => {
-                    deleteShape(target.shapeIndex);
+                    deleteSelectedShapes();
                     contextMenu.classList.add('hidden');
                 };
                 contextMenu.appendChild(deleteBtn);
@@ -1087,6 +1380,84 @@
                 contextMenu.classList.remove('hidden');
             } else {
                 contextMenu.classList.add('hidden');
+            }
+        }
+
+        // 선택된 도형만 영역을 정밀 캡처하여 인쇄 모달을 여는 함수
+        function printSelectedShapes() {
+            if (selectedShapeIndices.length === 0) {
+                return alert("인쇄할 도형을 선택해주세요 (Shift+클릭 또는 드래그 박스로 선택).");
+            }
+
+            const bounds = getMultipleShapesBounds(selectedShapeIndices);
+            if (!bounds) return;
+
+            // 여백(Padding) 추가 (논리 단위)
+            const padding = 20 / globalScale;
+            const minX = bounds.minX - padding;
+            const minY = bounds.minY - padding;
+            const maxX = bounds.maxX + padding;
+            const maxY = bounds.maxY + padding;
+            const w = maxX - minX;
+            const h = maxY - minY;
+
+            if (w < 5 || h < 5) return;
+
+            // 지정된 도형들만 인쇄 미리보기용으로 캔버스 재그리기
+            draw(true, selectedShapeIndices);
+
+            const screenMinX = (minX * globalScale) + originX;
+            const screenMinY = (minY * globalScale) + originY;
+            const screenW = w * globalScale;
+            const screenH = h * globalScale;
+            const dpr = window.devicePixelRatio || 1;
+
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = screenW * dpr;
+            cropCanvas.height = screenH * dpr;
+            const cropCtx = cropCanvas.getContext('2d');
+
+            cropCtx.drawImage(
+                canvas,
+                screenMinX * dpr, screenMinY * dpr, screenW * dpr, screenH * dpr,
+                0, 0, screenW * dpr, screenH * dpr
+            );
+
+            printPreviewImg.src = cropCanvas.toDataURL('image/png');
+            printModal.classList.remove('hidden');
+            
+            // 원래 상태로 캔버스 복원
+            draw(false);
+        }
+
+        function groupSelectedShapes() {
+            if (selectedShapeIndices.length < 2) {
+                showToast('⚠️ 2개 이상의 도형을 선택해야 그룹으로 묶을 수 있습니다.');
+                return;
+            }
+            const gId = 'group_' + Date.now();
+            selectedShapeIndices.forEach(idx => {
+                if (shapes[idx]) shapes[idx].groupId = gId;
+            });
+            saveHistory();
+            draw();
+            showToast(`📦 ${selectedShapeIndices.length}개 도형 그룹 생성됨`);
+        }
+
+        function ungroupSelectedShapes() {
+            let count = 0;
+            selectedShapeIndices.forEach(idx => {
+                if (shapes[idx] && shapes[idx].groupId) {
+                    delete shapes[idx].groupId;
+                    count++;
+                }
+            });
+            if (count > 0) {
+                saveHistory();
+                draw();
+                showToast('🔓 그룹 해제됨');
+            } else {
+                showToast('⚠️ 선택한 도형에 그룹이 지정되어 있지 않습니다.');
             }
         }
 
@@ -1184,6 +1555,7 @@
                 if(drawType === 'polygon') drawPolygonBtn.classList.add('active');
                 if(drawType === 'line') drawLineBtn.classList.add('active');
                 if(drawType === 'circle') drawCircleBtn.classList.add('active');
+                if(drawType === 'regular') drawRegularPolygonBtn.classList.add('active');
             }
         }
 
@@ -1198,9 +1570,10 @@
             } else {
                 modeSelectBtn.classList.add('active'); modeDrawBtn.classList.remove('active');
                 drawBtns.forEach(btn => btn.classList.remove('active'));
-                instructionBanner.innerHTML = '💡 <strong>선택/이동 모드:</strong> 도형을 좌클릭하여 선택/편집하고, 우클릭 시 팝업 메뉴를 엽니다. (Ctrl+휠: 확대/축소, Space+드래그: 화면이동)';
+                instructionBanner.innerHTML = '💡 <strong>선택/이동 모드:</strong> Shift+클릭 또는 드래그 박스로 다중 선택하고, 상단 버튼이나 우클릭 메뉴로 선택 도형을 인쇄할 수 있습니다.';
                 instructionBanner.className = 'bg-green-50 border-b border-green-100 px-4 py-2 text-sm text-green-700 font-medium flex items-center justify-center transition-colors z-10 shrink-0';
                 if (currentShape.length > 0) currentShape = [];
+                regularPolyParams = null;
             }
             draw();
         }
@@ -1211,7 +1584,6 @@
             updateDrawToolUI();
         }
 
-        // Stepper (Scrubbing) 제어 함수
         function handleStepper(event, sIdx, vIdx, type) {
             if (event.type === 'keydown' && event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
             if (event.type === 'wheel') event.preventDefault(); 
@@ -1228,10 +1600,8 @@
                 event.preventDefault(); 
                 let newVal = val + delta;
                 
-                // 1 미만 방지 (0, 음수 불가)
                 if (newVal < 1) newVal = 1;
 
-                // 입력 필드 안에는 순수 수치만 유지
                 event.target.value = newVal.toFixed(1);
                 
                 if (type === 'angle') applySingleAngle(sIdx, vIdx, true);
@@ -1240,6 +1610,17 @@
         }
 
         function updatePanels(sIdx, isSyncOnly = false) {
+            if (selectedShapeIndices.length > 1) {
+                canvasPropsContent.classList.add('hidden');
+                objectPropsContent.classList.remove('hidden');
+                sidebarTitle.innerText = "다중 객체 선택됨";
+                sidebarLockIndicator.innerText = `${selectedShapeIndices.length}개 선택됨`;
+                sidebarLockIndicator.classList.remove('hidden');
+                multiEditForm.innerHTML = `<div class="p-4 text-center text-xs text-gray-500 font-medium">다중 선택 모드입니다.<br><br>도형들을 함께 이동하거나 상단 <strong>🖨️ 선택 도형 인쇄</strong> 버튼으로 출력할 수 있습니다.</div>`;
+                activePanelShapeIndex = null;
+                return;
+            }
+
             if (sIdx === null || sIdx < 0 || sIdx >= shapes.length) {
                 canvasPropsContent.classList.remove('hidden');
                 objectPropsContent.classList.add('hidden');
@@ -1255,6 +1636,7 @@
             
             if (lockedShapeIndex === sIdx) {
                 sidebarTitle.innerText = "객체 속성 편집";
+                sidebarLockIndicator.innerText = "도형 선택됨";
                 sidebarLockIndicator.classList.remove('hidden');
             } else {
                 sidebarTitle.innerText = "도형 속성 실시간 호버";
@@ -1397,7 +1779,6 @@
             let numVal = parseFloat(valStr);
 
             if (!isNaN(numVal) && !/[a-zA-Z가-힣]/.test(valStr)) {
-                // 1 미만 방지 (0, 음수 불가)
                 if (numVal < 1) {
                     numVal = 1;
                     if (!isSyncOnly) input.value = '1.0';
@@ -1442,7 +1823,6 @@
             let numVal = parseFloat(valStr);
 
             if (!isNaN(numVal) && !/[a-zA-Z가-힣]/.test(valStr)) {
-                // 1 미만 방지 (0, 음수 불가)
                 if (numVal < 1) {
                     numVal = 1;
                     if (!isSyncOnly) input.value = '1.0';
@@ -1468,7 +1848,17 @@
 
         function deleteShape(index) {
             shapes.splice(index, 1);
-            lockedShapeIndex = null;
+            selectedShapeIndices = [];
+            applyConstraints(); saveHistory(); draw(); updatePanels(null);
+        }
+
+        function deleteSelectedShapes() {
+            if (selectedShapeIndices.length === 0) return;
+            const sortedIndices = [...selectedShapeIndices].sort((a, b) => b - a);
+            sortedIndices.forEach(idx => {
+                shapes.splice(idx, 1);
+            });
+            selectedShapeIndices = [];
             applyConstraints(); saveHistory(); draw(); updatePanels(null);
         }
 
@@ -1479,33 +1869,33 @@
             drawLineBtn.addEventListener('click', () => setDrawType('line'));
             drawCircleBtn.addEventListener('click', () => setDrawType('circle'));
 
+            groupBtn.addEventListener('click', groupSelectedShapes);
+            ungroupBtn.addEventListener('click', ungroupSelectedShapes);
+            printSelectedBtn.addEventListener('click', printSelectedShapes);
+
+            // 정다각형 클릭 시 조건 수집 후 캔버스 클릭 대기 상태로 설정
             drawRegularPolygonBtn.addEventListener('click', () => {
                 const sidesInput = prompt("몇 각형을 그리시겠습니까? (3 이상의 숫자):", "5");
                 if (!sidesInput) return;
                 const numSides = parseInt(sidesInput.trim());
                 if (isNaN(numSides) || numSides < 3) return alert("3 이상의 올바른 숫자를 입력해주세요.");
+                
                 const lenInput = prompt("변의 길이를 입력하세요 (cm):", "3");
                 if (!lenInput) return;
                 const sideLenCm = Number(lenInput.trim());
                 if (isNaN(sideLenCm) || sideLenCm <= 0) return alert("올바른 변의 길이를 입력해주세요.");
                 
-                const sideLenPx = sideLenCm * 50, R = sideLenPx / (2 * Math.sin(Math.PI / numSides));
-                const cx = originX, cy = originY;
-                
-                const newShape = []; newShape.type = 'polygon'; newShape.id = generateId();
-                for (let i = 0; i < numSides; i++) {
-                    const angle = (2 * Math.PI * i / numSides) - Math.PI / 2;
-                    newShape.push({ x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle), showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) });
-                }
-                shapes.push(newShape); saveHistory(); draw();
+                regularPolyParams = { numSides, sideLenCm };
+                setDrawType('regular');
+                instructionBanner.innerHTML = `💡 <strong>정다각형 모드:</strong> 캔버스에서 정다각형의 <strong>중심이 될 위치</strong>를 클릭하세요.`;
+                instructionBanner.className = 'bg-indigo-100 border-b border-indigo-200 px-4 py-2 text-sm text-indigo-800 font-bold flex items-center justify-center transition-colors z-10 shrink-0';
             });
 
             undoBtn.addEventListener('click', () => { undo(); showToast('↩️ 실행 취소'); });
-            clearBtn.addEventListener('click', () => { shapes = []; currentShape = []; globalVertexCount = 0; lockedShapeIndex = null; selectionBox = null; saveHistory(); draw(); updatePanels(null); });
+            clearBtn.addEventListener('click', () => { shapes = []; currentShape = []; globalVertexCount = 0; selectedShapeIndices = []; selectionBox = null; regularPolyParams = null; saveHistory(); draw(); updatePanels(null); });
             showGridCheck.addEventListener('change', draw);
             showRulerCheck.addEventListener('change', draw);
             
-            // 줌 이벤트 리스너 추가
             canvas.addEventListener('wheel', (e) => {
                 if (e.ctrlKey) {
                     e.preventDefault(); 
@@ -1525,9 +1915,7 @@
                 }
             }, { passive: false });
             
-            // 키보드 단축키
             window.addEventListener('keydown', (e) => {
-                // 입력 필드 포커스 중에는 단축키 무시
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
                 const key = e.key.toLowerCase();
@@ -1538,6 +1926,14 @@
                         isSpaceDown = true;
                         if (!dragState) canvas.style.cursor = 'grab';
                     }
+                }
+                else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 'g') {
+                    e.preventDefault();
+                    ungroupSelectedShapes();
+                }
+                else if ((e.ctrlKey || e.metaKey) && key === 'g') {
+                    e.preventDefault();
+                    groupSelectedShapes();
                 }
                 else if ((e.ctrlKey || e.metaKey) && key === 'z') {
                     e.preventDefault();
@@ -1553,9 +1949,9 @@
                     showToast('✏️ 그리기 모드 (P)');
                 }
                 else if (e.key === 'Delete' || e.key === 'Backspace') {
-                    if (lockedShapeIndex !== null) {
-                        deleteShape(lockedShapeIndex);
-                        showToast('🗑️ 도형 삭제됨');
+                    if (selectedShapeIndices.length > 0) {
+                        deleteSelectedShapes();
+                        showToast('🗑️ 선택 도형 삭제됨');
                     }
                 }
             });
@@ -1581,7 +1977,7 @@
             });
 
             canvas.addEventListener('mouseleave', () => { 
-                if (lockedShapeIndex === null) {
+                if (selectedShapeIndices.length === 0) {
                     hoverState = null; 
                     updatePanels(null); 
                 }

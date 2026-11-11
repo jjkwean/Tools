@@ -185,6 +185,7 @@
 
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 no-print flex-wrap">
                 <button id="cancel-print-btn" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-lg transition text-sm">닫기</button>
+                <button id="download-svg-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow transition text-sm flex items-center gap-1.5" title="무한 해상도 고화질 벡터 SVG 저장"><span>📐</span> SVG 다운로드</button>
                 <button id="download-png-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition text-sm flex items-center gap-1.5"><span>🖼️</span> PNG 다운로드</button>
                 <button id="download-pdf-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow transition text-sm flex items-center gap-1.5"><span>📄</span> PDF 다운로드</button>
                 <button id="exec-print-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow transition text-sm flex items-center gap-1.5"><span>🖨️</span> 인쇄하기</button>
@@ -236,6 +237,7 @@
         const closePrintModal = document.getElementById('close-print-modal');
         const cancelPrintBtn = document.getElementById('cancel-print-btn');
         const execPrintBtn = document.getElementById('exec-print-btn');
+        const downloadSvgBtn = document.getElementById('download-svg-btn');
         const downloadPngBtn = document.getElementById('download-png-btn');
         const downloadPdfBtn = document.getElementById('download-pdf-btn');
 
@@ -244,7 +246,10 @@
         let regularPolyParams = null; // 정다각형 생성 대기 파라미터 { sides, lengthCm }
         let shapes = []; 
         let currentShape = []; 
-        let history = []; 
+        
+        // 메모리 최적화 히스토리 (Delta/Command Pattern) 변수
+        let historyStack = []; 
+        let lastHistoryState = { shapesMap: {}, currentShape: [], globalVertexCount: 0 };
         let globalVertexCount = 0; 
         
         // 뷰포트 상태 변수
@@ -325,73 +330,236 @@
             return label;
         }
 
+        // 깊은 복사 헬퍼 함수
+        function cloneShape(s) {
+            const arr = JSON.parse(JSON.stringify(s));
+            arr.type = s.type;
+            arr.id = s.id;
+            arr.groupId = s.groupId;
+            return arr;
+        }
+
+        // --- 메모리 최적화 Delta (Command Pattern) 기반 saveHistory ---
         function saveHistory() {
-            const state = {
-                shapes: shapes.map(s => { const arr = JSON.parse(JSON.stringify(s)); arr.type = s.type; arr.id = s.id; arr.groupId = s.groupId; return arr; }),
+            const currentShapesMap = {};
+            shapes.forEach(s => {
+                if (!s.id) s.id = generateId();
+                currentShapesMap[s.id] = cloneShape(s);
+            });
+
+            const deltaAdded = {};
+            const deltaModified = {};
+            const deltaRemoved = {};
+
+            // 추가 및 수정 검출
+            for (let id in currentShapesMap) {
+                if (!lastHistoryState.shapesMap[id]) {
+                    deltaAdded[id] = cloneShape(currentShapesMap[id]);
+                } else if (JSON.stringify(currentShapesMap[id]) !== JSON.stringify(lastHistoryState.shapesMap[id])) {
+                    deltaModified[id] = {
+                        before: cloneShape(lastHistoryState.shapesMap[id]),
+                        after: cloneShape(currentShapesMap[id])
+                    };
+                }
+            }
+
+            // 삭제 검출
+            for (let id in lastHistoryState.shapesMap) {
+                if (!currentShapesMap[id]) {
+                    deltaRemoved[id] = cloneShape(lastHistoryState.shapesMap[id]);
+                }
+            }
+
+            const currentOrder = shapes.map(s => s.id);
+            const prevOrder = lastHistoryState.order || [];
+            const orderChanged = JSON.stringify(currentOrder) !== JSON.stringify(prevOrder);
+
+            // 변경사항이 있을 때만 command 등록
+            if (Object.keys(deltaAdded).length > 0 || Object.keys(deltaModified).length > 0 || 
+                Object.keys(deltaRemoved).length > 0 || orderChanged || 
+                JSON.stringify(currentShape) !== JSON.stringify(lastHistoryState.currentShape) ||
+                globalVertexCount !== lastHistoryState.globalVertexCount) {
+
+                const command = {
+                    deltaAdded,
+                    deltaModified,
+                    deltaRemoved,
+                    prevOrder,
+                    currentOrder,
+                    prevCurrentShape: JSON.parse(JSON.stringify(lastHistoryState.currentShape || [])),
+                    nextCurrentShape: JSON.parse(JSON.stringify(currentShape)),
+                    prevVertexCount: lastHistoryState.globalVertexCount || 0,
+                    nextVertexCount: globalVertexCount
+                };
+
+                historyStack.push(command);
+                if (historyStack.length > 50) historyStack.shift();
+
+                lastHistoryState = {
+                    shapesMap: currentShapesMap,
+                    order: currentOrder,
+                    currentShape: JSON.parse(JSON.stringify(currentShape)),
+                    globalVertexCount: globalVertexCount
+                };
+            }
+        }
+
+        // --- 메모리 최적화 Delta undo 함수 ---
+        function undo() {
+            if (historyStack.length === 0) return;
+
+            const command = historyStack.pop();
+            const shapesMap = { ...lastHistoryState.shapesMap };
+
+            // 추가되었던 도형 제거
+            for (let id in command.deltaAdded) {
+                delete shapesMap[id];
+            }
+            // 삭제되었던 도형 복원
+            for (let id in command.deltaRemoved) {
+                shapesMap[id] = cloneShape(command.deltaRemoved[id]);
+            }
+            // 수정되었던 도형 이전 상태로 원복
+            for (let id in command.deltaModified) {
+                shapesMap[id] = cloneShape(command.deltaModified[id].before);
+            }
+
+            // 도형 순서 복원
+            shapes = command.prevOrder.map(id => shapesMap[id]).filter(Boolean);
+            currentShape = JSON.parse(JSON.stringify(command.prevCurrentShape));
+            globalVertexCount = command.prevVertexCount;
+
+            lastHistoryState = {
+                shapesMap: shapesMap,
+                order: [...command.prevOrder],
                 currentShape: JSON.parse(JSON.stringify(currentShape)),
                 globalVertexCount: globalVertexCount
             };
-            history.push(state);
-            if (history.length > 50) history.shift();
+
+            dragState = null; hoverState = null; selectedShapeIndices = []; selectionBox = null;
+            updatePanels(null); applyConstraints(); draw();
         }
 
-        function undo() {
-            if (history.length > 1) {
-                history.pop();
-                const prevState = history[history.length - 1];
-                shapes = prevState.shapes.map(s => { const arr = JSON.parse(JSON.stringify(s)); arr.type = s.type; arr.id = s.id; arr.groupId = s.groupId; return arr; });
-                currentShape = JSON.parse(JSON.stringify(prevState.currentShape));
-                globalVertexCount = prevState.globalVertexCount;
-                dragState = null; hoverState = null; selectedShapeIndices = []; selectionBox = null;
-                updatePanels(null); applyConstraints(); draw();
-            }
-        }
-
+        // --- 경사 하강법 (Gradient Descent) 기반 수치/2D 구속조건 최적화 해법기 (Constraint Solver) ---
         function applyConstraints() {
-            let changed = false;
-            for (let iter = 0; iter < 3; iter++) {
+            const maxIterations = 30;
+            const learningRate = 0.5;
+            const eps = 1e-4;
+
+            // 전체 시스템의 구속 오차 계산 함수
+            function computeTotalError() {
+                let error = 0;
                 shapes.forEach(shape => {
-                    let pointDeltas = {};
+                    // 부채꼴/활꼴 중심-반지름 동기화 구속 오차
                     if (shape.type === 'sector' || shape.type === 'segment') {
                         let C = shape[0], P1 = shape[1], P2 = shape[2];
-                        let R = Math.sqrt(dist2(C, P1)), d2 = Math.sqrt(dist2(C, P2));
-                        if (Math.abs(R - d2) > 0.01) {
-                            let a2 = Math.atan2(P2.y - C.y, P2.x - C.x);
-                            P2.x = C.x + R * Math.cos(a2); P2.y = C.y + R * Math.sin(a2); changed = true;
+                        if (C && P1 && P2) {
+                            let R = Math.sqrt(dist2(C, P1));
+                            let d2 = Math.sqrt(dist2(C, P2));
+                            error += Math.pow(R - d2, 2);
                         }
                     }
-                    shape.forEach((p, i) => {
+
+                    // 부착점 (Point-on-Vertex / Point-on-Edge / Circle Edge) 구속 오차
+                    shape.forEach(p => {
                         if (p.attachedTo) {
-                            let att = p.attachedTo, targetShape = shapes.find(s => s.id === att.shapeId);
-                            if (!targetShape) return;
-                            let nx = p.x, ny = p.y;
-                            if (att.type === 'vertex') {
-                                let targetV = targetShape[att.vertexIndex];
-                                if (targetV) { nx = targetV.x; ny = targetV.y; }
-                            } else if (att.type === 'edge') {
-                                let p1 = targetShape[att.v1], p2 = targetShape[att.v2];
-                                if (p1 && p2) { nx = p1.x + att.t * (p2.x - p1.x); ny = p1.y + att.t * (p2.y - p1.y); }
-                            } else if (att.type === 'circle_edge') {
-                                let C = targetShape[0], P1 = targetShape[1];
-                                if (C && P1) {
-                                    let R = Math.sqrt(dist2(C, P1));
-                                    nx = C.x + R * Math.cos(att.angle); ny = C.y + R * Math.sin(att.angle);
+                            let att = p.attachedTo;
+                            let targetShape = shapes.find(s => s.id === att.shapeId);
+                            if (targetShape) {
+                                let targetX = p.x, targetY = p.y;
+                                if (att.type === 'vertex') {
+                                    let targetV = targetShape[att.vertexIndex];
+                                    if (targetV) { targetX = targetV.x; targetY = targetV.y; }
+                                } else if (att.type === 'edge') {
+                                    let p1 = targetShape[att.v1], p2 = targetShape[att.v2];
+                                    if (p1 && p2) {
+                                        targetX = p1.x + att.t * (p2.x - p1.x);
+                                        targetY = p1.y + att.t * (p2.y - p1.y);
+                                    }
+                                } else if (att.type === 'circle_edge') {
+                                    let C = targetShape[0], P1 = targetShape[1];
+                                    if (C && P1) {
+                                        let R = Math.sqrt(dist2(C, P1));
+                                        targetX = C.x + R * Math.cos(att.angle);
+                                        targetY = C.y + R * Math.sin(att.angle);
+                                    }
                                 }
-                            }
-                            if (Math.abs(p.x - nx) > 0.01 || Math.abs(p.y - ny) > 0.01) {
-                                pointDeltas[i] = { dx: nx - p.x, dy: ny - p.y };
-                                p.x = nx; p.y = ny; changed = true;
+                                error += Math.pow(p.x - targetX, 2) + Math.pow(p.y - targetY, 2);
                             }
                         }
                     });
-                    const attachedIndices = Object.keys(pointDeltas);
-                    if (attachedIndices.length > 0) {
-                        let primaryDelta = pointDeltas[attachedIndices[0]];
-                        shape.forEach((p, i) => { if (!p.attachedTo) { p.x += primaryDelta.dx; p.y += primaryDelta.dy; } });
+                });
+                return error;
+            }
+
+            // 오차 편미분 구배(Gradient)를 이용한 위치 반복 조정
+            for (let iter = 0; iter < maxIterations; iter++) {
+                let initialError = computeTotalError();
+                if (initialError < 1e-6) break;
+
+                let pointsToOptimize = [];
+                shapes.forEach(shape => {
+                    shape.forEach(p => {
+                        if (p.attachedTo || shape.type === 'sector' || shape.type === 'segment') {
+                            pointsToOptimize.push(p);
+                        }
+                    });
+                });
+
+                if (pointsToOptimize.length === 0) break;
+
+                let maxGradient = 0;
+                pointsToOptimize.forEach(p => {
+                    let origX = p.x, origY = p.y;
+
+                    // X 좌표 편미분 구배
+                    p.x = origX + eps;
+                    let errXPlus = computeTotalError();
+                    p.x = origX - eps;
+                    let errXMinus = computeTotalError();
+                    p.x = origX;
+                    let gradX = (errXPlus - errXMinus) / (2 * eps);
+
+                    // Y 좌표 편미분 구배
+                    p.y = origY + eps;
+                    let errYPlus = computeTotalError();
+                    p.y = origY - eps;
+                    let errYMinus = computeTotalError();
+                    p.y = origY;
+                    let gradY = (errYPlus - errYMinus) / (2 * eps);
+
+                    let gradMag = Math.sqrt(gradX * gradX + gradY * gradY);
+                    if (gradMag > maxGradient) maxGradient = gradMag;
+
+                    // 경사 하강 업데이트
+                    p.x -= learningRate * gradX;
+                    p.y -= learningRate * gradY;
+                });
+
+                if (maxGradient < 1e-4) break;
+            }
+
+            // 하드 코어 구속(절대 위치 동기화) 보정
+            shapes.forEach(shape => {
+                if (shape.type === 'sector' || shape.type === 'segment') {
+                    let C = shape[0], P1 = shape[1], P2 = shape[2];
+                    if (C && P1 && P2) {
+                        let R = Math.sqrt(dist2(C, P1));
+                        let a2 = Math.atan2(P2.y - C.y, P2.x - C.x);
+                        P2.x = C.x + R * Math.cos(a2);
+                        P2.y = C.y + R * Math.sin(a2);
+                    }
+                }
+                shape.forEach(p => {
+                    if (p.attachedTo && p.attachedTo.type === 'vertex') {
+                        let targetShape = shapes.find(s => s.id === p.attachedTo.shapeId);
+                        if (targetShape && targetShape[p.attachedTo.vertexIndex]) {
+                            p.x = targetShape[p.attachedTo.vertexIndex].x;
+                            p.y = targetShape[p.attachedTo.vertexIndex].y;
+                        }
                     }
                 });
-                if (!changed) break;
-            }
+            });
         }
 
         function resizeCanvas() {
@@ -879,6 +1047,182 @@
             if (showRulerCheck.checked && !isPrintPreview) drawRulers(rect);
         }
 
+        // --- 계산된 좌표 기반 고해상도 SVG 벡터 변환 함수 ---
+        function exportToSVG(targetIndices = null, customBounds = null) {
+            let shapesToExport = [];
+            if (targetIndices && targetIndices.length > 0) {
+                shapesToExport = targetIndices.map(idx => shapes[idx]).filter(Boolean);
+            } else {
+                shapesToExport = shapes;
+            }
+
+            if (shapesToExport.length === 0) return null;
+
+            let bounds = customBounds;
+            if (!bounds) {
+                if (targetIndices && targetIndices.length > 0) {
+                    bounds = getMultipleShapesBounds(targetIndices);
+                } else {
+                    const allIndices = shapesToExport.map((_, idx) => idx);
+                    bounds = getMultipleShapesBounds(allIndices);
+                }
+            }
+
+            if (!bounds) return null;
+
+            const pad = 20;
+            const minX = bounds.minX - pad;
+            const minY = bounds.minY - pad;
+            const width = (bounds.maxX - bounds.minX) + pad * 2;
+            const height = (bounds.maxY - bounds.minY) + pad * 2;
+
+            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">\n`;
+            svgContent += `  <rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#ffffff"/>\n`;
+
+            shapesToExport.forEach(shape => {
+                if (!shape || shape.length === 0) return;
+                const shapeType = shape.type || 'polygon';
+
+                if (shapeType === 'polygon') {
+                    const pointsStr = shape.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+                    svgContent += `  <polygon points="${pointsStr}" fill="rgba(79, 70, 229, 0.05)" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>\n`;
+                } else if (shapeType === 'circle') {
+                    const center = shape[0], edgePoint = shape[1];
+                    const r = Math.sqrt(dist2(center, edgePoint));
+                    svgContent += `  <circle cx="${center.x.toFixed(2)}" cy="${center.y.toFixed(2)}" r="${r.toFixed(2)}" fill="rgba(79, 70, 229, 0.05)" stroke="#4f46e5" stroke-width="2.5"/>\n`;
+
+                    if (shape[0].showLength !== false && shape.length >= 2) {
+                        svgContent += `  <line x1="${center.x.toFixed(2)}" y1="${center.y.toFixed(2)}" x2="${edgePoint.x.toFixed(2)}" y2="${edgePoint.y.toFixed(2)}" stroke="#4f46e5" stroke-width="1.8" stroke-dasharray="4,4"/>\n`;
+                        const rCm = (r / 50).toFixed(1) + ' cm';
+                        const displayRadiusStr = shape[0].customLength ? shape[0].customLength : `r = ${rCm}`;
+                        const angle = Math.atan2(edgePoint.y - center.y, edgePoint.x - center.x);
+                        const midX = (center.x + edgePoint.x) / 2 + Math.cos(angle + Math.PI / 2) * 14;
+                        const midY = (center.y + edgePoint.y) / 2 + Math.sin(angle + Math.PI / 2) * 14;
+                        svgContent += `  <text x="${midX.toFixed(2)}" y="${midY.toFixed(2)}" font-family="sans-serif" font-size="13" font-weight="bold" font-style="italic" fill="#4f46e5" text-anchor="middle" dominant-baseline="middle">${displayRadiusStr}</text>\n`;
+                    }
+                } else if (shapeType === 'line') {
+                    svgContent += `  <line x1="${shape[0].x.toFixed(2)}" y1="${shape[0].y.toFixed(2)}" x2="${shape[1].x.toFixed(2)}" y2="${shape[1].y.toFixed(2)}" stroke="#4f46e5" stroke-width="2.5"/>\n`;
+                }
+
+                if (shapeType === 'polygon' || shapeType === 'line') {
+                    let edges = [];
+                    if (shapeType === 'polygon') {
+                        for (let i = 0; i < shape.length; i++) edges.push([i, (i + 1) % shape.length]);
+                    } else if (shapeType === 'line') {
+                        edges.push([0, 1]);
+                    }
+
+                    edges.forEach(([v1, v2]) => {
+                        const p1 = shape[v1], p2 = shape[v2];
+                        if (p1.showLength !== false) {
+                            const dx = p2.x - p1.x, dy = p2.y - p1.y;
+                            const lengthPx = Math.sqrt(dx * dx + dy * dy);
+                            let lengthStr = (lengthPx / 50).toFixed(1) + ' cm';
+                            const displayLengthStr = p1.customLength ? p1.customLength : lengthStr;
+
+                            let isCW = true;
+                            if (shape.length >= 3 && shapeType === 'polygon') isCW = getPolygonArea(shape) > 0;
+                            let nx = isCW ? dy : -dy, ny = isCW ? -dx : dx;
+                            let nLen = Math.sqrt(nx * nx + ny * ny);
+                            if (nLen > 0) { nx /= nLen; ny /= nLen; } else { nx = 0; ny = -1; }
+
+                            const midX = (p1.x + p2.x) / 2;
+                            const midY = (p1.y + p2.y) / 2;
+                            const curveOffset = 25;
+                            const controlX = midX + nx * curveOffset;
+                            const controlY = midY + ny * curveOffset;
+                            const textOffsetX = midX + nx * (curveOffset + 12);
+                            const textOffsetY = midY + ny * (curveOffset + 12);
+
+                            svgContent += `  <path d="M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} Q ${controlX.toFixed(2)} ${controlY.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4,4"/>\n`;
+                            svgContent += `  <text x="${textOffsetX.toFixed(2)}" y="${textOffsetY.toFixed(2)}" font-family="sans-serif" font-size="13" font-style="italic" fill="#1f2937" text-anchor="middle" dominant-baseline="middle">${displayLengthStr}</text>\n`;
+                        }
+                    });
+                }
+
+                if (shapeType === 'polygon') {
+                    const isCW = getPolygonArea(shape) > 0;
+                    shape.forEach((p2, i) => {
+                        if (!p2.showAngle || shape.length < 3) return;
+                        const p1 = shape[(i - 1 + shape.length) % shape.length], p3 = shape[(i + 1) % shape.length];
+                        let a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x), a2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
+                        let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
+                        let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
+                        if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
+
+                        const arcRadius = 22;
+                        const startX = p2.x + arcRadius * Math.cos(a1);
+                        const startY = p2.y + arcRadius * Math.sin(a1);
+                        const endX = p2.x + arcRadius * Math.cos(a2);
+                        const endY = p2.y + arcRadius * Math.sin(a2);
+                        const sweepFlag = isCW ? 0 : 1;
+
+                        svgContent += `  <path d="M ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} L ${startX.toFixed(2)} ${startY.toFixed(2)} A ${arcRadius} ${arcRadius} 0 0 ${sweepFlag} ${endX.toFixed(2)} ${endY.toFixed(2)} Z" fill="rgba(245, 158, 11, 0.2)" stroke="rgba(245, 158, 11, 0.8)" stroke-width="2"/>\n`;
+
+                        let angleDeg = (interiorAngle * 180 / Math.PI).toFixed(0) + '°';
+                        const displayAngleStr = p2.customAngle ? p2.customAngle : angleDeg;
+                        let midAngle = isCW ? (a1 - interiorAngle / 2) : (a1 + interiorAngle / 2);
+                        const tx = p2.x + Math.cos(midAngle) * 36, ty = p2.y + Math.sin(midAngle) * 36;
+                        svgContent += `  <text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" font-family="sans-serif" font-size="11" font-weight="bold" fill="#1f2937" text-anchor="middle" dominant-baseline="middle">${displayAngleStr}</text>\n`;
+                    });
+                }
+
+                const centroid = (shapeType === 'polygon' && shape.length >= 3) ? getPolygonCentroid(shape) : null;
+                shape.forEach((p, vIdx) => {
+                    const isCircleCenter = (shapeType === 'circle' && vIdx === 0);
+                    if (isCircleCenter) {
+                        svgContent += `  <circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="4" fill="#000000"/>\n`;
+                    }
+
+                    if (p.label) {
+                        let labelX = p.x + 12, labelY = p.y - 10;
+                        if (isCircleCenter) {
+                            labelX = p.x - 14; labelY = p.y - 14;
+                        } else if (centroid) {
+                            let dirX = p.x - centroid.x, dirY = p.y - centroid.y;
+                            let dist = Math.sqrt(dirX * dirX + dirY * dirY);
+                            if (dist > 0) {
+                                labelX = p.x + (dirX / dist) * 18;
+                                labelY = p.y + (dirY / dist) * 18;
+                            }
+                        }
+                        svgContent += `  <text x="${labelX.toFixed(2)}" y="${labelY.toFixed(2)}" font-family="'Times New Roman', serif" font-size="16" font-weight="bold" font-style="italic" fill="${isCircleCenter ? '#000000' : '#111827'}" text-anchor="middle" dominant-baseline="middle">${p.label}</text>\n`;
+                    }
+                });
+            });
+
+            svgContent += `</svg>`;
+            return svgContent;
+        }
+
+        function downloadSVG() {
+            let svgString = null;
+            if (selectionBox) {
+                const minX = Math.min(selectionBox.startX, selectionBox.endX);
+                const minY = Math.min(selectionBox.startY, selectionBox.endY);
+                const maxX = Math.max(selectionBox.startX, selectionBox.endX);
+                const maxY = Math.max(selectionBox.startY, selectionBox.endY);
+                svgString = exportToSVG(null, { minX, minY, maxX, maxY });
+            } else if (selectedShapeIndices.length > 0) {
+                svgString = exportToSVG(selectedShapeIndices);
+            } else {
+                svgString = exportToSVG();
+            }
+
+            if (!svgString) return alert("다운로드할 도형 데이터가 없습니다.");
+
+            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `geometry_vector_${Date.now()}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('📐 무한 해상도 SVG 다운로드 완료');
+        }
+
         function dist2(v, w) { return (v.x - w.x)**2 + (v.y - w.y)**2; }
         function distToSegmentSquared(p, v, w) {
             let l2 = dist2(v, w); if (l2 === 0) return dist2(p, v);
@@ -967,6 +1311,7 @@
                 if (foundPos !== -1) {
                     selectedShapeIndices[foundPos] = shapes.length - 1;
                 }
+                saveHistory();
                 return shapes.length - 1;
             }
             return index;
@@ -1319,6 +1664,16 @@
                 };
                 contextMenu.appendChild(printItem);
 
+                // SVG 벡터 파일 저장 메뉴 항목
+                const svgExportItem = document.createElement('button');
+                svgExportItem.className = 'w-full text-left px-4 py-2 hover:bg-purple-50 text-purple-700 flex items-center gap-2 border-b border-gray-100 font-semibold';
+                svgExportItem.innerHTML = '<span>📐</span> SVG 벡터 파일로 내보내기';
+                svgExportItem.onclick = () => {
+                    downloadSVG();
+                    contextMenu.classList.add('hidden');
+                };
+                contextMenu.appendChild(svgExportItem);
+
                 // 그룹 묶기 / 그룹 해제 컨텍스트 버튼
                 if (selectedShapeIndices.length >= 2) {
                     const groupItem = document.createElement('button');
@@ -1616,7 +1971,7 @@
                 sidebarTitle.innerText = "다중 객체 선택됨";
                 sidebarLockIndicator.innerText = `${selectedShapeIndices.length}개 선택됨`;
                 sidebarLockIndicator.classList.remove('hidden');
-                multiEditForm.innerHTML = `<div class="p-4 text-center text-xs text-gray-500 font-medium">다중 선택 모드입니다.<br><br>도형들을 함께 이동하거나 상단 <strong>🖨️ 선택 도형 인쇄</strong> 버튼으로 출력할 수 있습니다.</div>`;
+                multiEditForm.innerHTML = `<div class="p-4 text-center text-xs text-gray-500 font-medium">다중 선택 모드입니다.<br><br>도형들을 함께 이동하거나 상단 <strong>🖨️ 선택 도형 인쇄</strong> 또는 우클릭 메뉴로 출력/벡터 저장할 수 있습니다.</div>`;
                 activePanelShapeIndex = null;
                 return;
             }
@@ -1990,6 +2345,7 @@
 
             closePrintModal.addEventListener('click', closePrintPreviewModal);
             cancelPrintBtn.addEventListener('click', closePrintPreviewModal);
+            downloadSvgBtn.addEventListener('click', downloadSVG);
             downloadPngBtn.addEventListener('click', downloadPNG);
             downloadPdfBtn.addEventListener('click', downloadPDF);
             execPrintBtn.addEventListener('click', () => {

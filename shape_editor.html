@@ -83,7 +83,12 @@
     <div class="flex-1 flex flex-col relative overflow-hidden">
         <header class="bg-white shadow-sm p-4 flex flex-wrap justify-between items-center z-10 shrink-0 gap-4">
             <div class="flex items-center space-x-4">
-                <h1 class="text-xl font-bold text-indigo-600 mr-4">Shape Editor Pro</h1>
+                <h1 class="text-xl font-bold text-indigo-600 mr-2">Shape Editor Pro</h1>
+                <div class="flex items-center bg-gray-100 rounded-lg px-2 py-1 border border-gray-200 text-xs font-semibold text-gray-700 gap-1.5">
+                    <button id="zoom-out-btn" class="px-1.5 py-0.5 hover:bg-gray-200 rounded" title="축소 (Ctrl + -)">➖</button>
+                    <span id="zoom-level-text" class="min-w-[44px] text-center cursor-pointer" title="클릭 시 100% 초기화">100%</span>
+                    <button id="zoom-in-btn" class="px-1.5 py-0.5 hover:bg-gray-200 rounded" title="확대 (Ctrl + +)">➕</button>
+                </div>
             </div>
             
             <div class="flex space-x-3 ml-auto flex-wrap">
@@ -106,7 +111,7 @@
         </header>
 
         <div id="instruction-banner" class="bg-indigo-50 border-b border-indigo-100 px-4 py-2 text-sm text-indigo-700 font-medium flex items-center justify-center transition-colors z-10 shrink-0">
-            💡 <strong>교점 스냅 지원:</strong> 빨간 점(꼭짓점)을 마우스로 잡고 다른 도형의 변이나 꼭짓점으로 가져가면 자석처럼 자동 결합(교점 구속)됩니다.
+            💡 <strong>단축키 & 팁:</strong> <kbd class="px-1 bg-white border rounded text-xs mx-1">P</kbd>그리기 / <kbd class="px-1 bg-white border rounded text-xs mx-1">V</kbd>선택 / <kbd class="px-1 bg-white border rounded text-xs mx-1">Space+드래그</kbd>화면이동 / <kbd class="px-1 bg-white border rounded text-xs mx-1">휠</kbd>확대·축소 / <kbd class="px-1 bg-white border rounded text-xs mx-1">Del</kbd>삭제
         </div>
 
         <main class="flex-1 relative bg-gray-100 overflow-hidden" id="canvas-container">
@@ -155,7 +160,7 @@
                     <span class="text-[10px] text-gray-400 font-normal">표시여부 / 변수입력</span>
                 </div>
                 <div class="text-[10px] text-gray-500 text-center mb-1 bg-amber-50 p-2 rounded border border-amber-200">
-                    💡 입력창 선택 후 <kbd class="px-1 bg-gray-200 rounded">↑</kbd> <kbd class="px-1 bg-gray-200 rounded">↓</kbd> 또는 마우스 휠을 굴리면 <strong>도형이 실시간으로 변형</strong>됩니다.
+                    💡 입력창에 숫자를 입력(Enter)하거나 <kbd class="px-1 bg-gray-200 rounded">↑</kbd> <kbd class="px-1 bg-gray-200 rounded">↓</kbd> 또는 마우스 휠을 굴리면 <strong>도형이 실시간으로 변형</strong>됩니다.
                 </div>
                 <div id="multi-edit-form" class="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-[460px] overflow-y-auto"></div>
             </div>
@@ -164,11 +169,38 @@
 
     <div id="toast-container" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col gap-2 z-[9999] pointer-events-none"></div>
 
-    <!-- 미리보기 모달 -->
+    <!-- 정다각형 설정 모달 -->
+    <div id="regular-poly-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center bg-indigo-50">
+                <h3 class="text-base font-bold text-indigo-800">🌟 정다각형 생성 설정</h3>
+                <button id="close-reg-poly-modal" class="text-gray-400 hover:text-red-500 font-bold">✕</button>
+            </div>
+            <div class="p-5 space-y-4 text-sm">
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">변의 개수 (3 ~ 20각형)</label>
+                    <input type="number" id="reg-poly-sides" min="3" max="20" value="5" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">한 변의 길이 (cm)</label>
+                    <input type="number" id="reg-poly-length" min="0.5" max="20" step="0.5" value="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <p class="text-xs text-gray-500 bg-gray-50 p-2.5 rounded border border-gray-200">
+                    확인 후 캔버스에서 <strong>중심점</strong>이 될 위치를 클릭하면 정다각형이 즉시 생성됩니다.
+                </p>
+            </div>
+            <div class="px-5 py-3 border-t border-gray-200 flex justify-end gap-2 bg-gray-50">
+                <button id="cancel-reg-poly-btn" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg text-sm">취소</button>
+                <button id="confirm-reg-poly-btn" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-sm">적용 후 클릭하여 배치</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 미리보기 및 내보내기 모달 -->
     <div id="print-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh] overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 no-print">
-                <h3 class="text-lg font-bold text-gray-800">🖼️ 영역 캡처 미리보기</h3>
+                <h3 class="text-lg font-bold text-gray-800">🖼️ 영역 캡처 미리보기 & 내보내기</h3>
                 <button id="close-print-modal" class="text-gray-400 hover:text-red-500 text-xl font-bold p-1">✕</button>
             </div>
             
@@ -202,6 +234,10 @@
         const printSelectedBtn = document.getElementById('print-selected-btn');
         const instructionBanner = document.getElementById('instruction-banner');
 
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const zoomLevelText = document.getElementById('zoom-level-text');
+
         const modeDrawBtn = document.getElementById('mode-draw');
         const modeSelectBtn = document.getElementById('mode-select');
         const drawPolygonBtn = document.getElementById('draw-polygon-btn');
@@ -209,6 +245,13 @@
         const drawCircleBtn = document.getElementById('draw-circle-btn');
         const drawRegularPolygonBtn = document.getElementById('draw-regular-polygon-btn');
         const drawBtns = [drawPolygonBtn, drawLineBtn, drawCircleBtn, drawRegularPolygonBtn];
+
+        const regPolyModal = document.getElementById('regular-poly-modal');
+        const regPolySidesInput = document.getElementById('reg-poly-sides');
+        const regPolyLengthInput = document.getElementById('reg-poly-length');
+        const closeRegPolyModal = document.getElementById('close-reg-poly-modal');
+        const cancelRegPolyBtn = document.getElementById('cancel-reg-poly-btn');
+        const confirmRegPolyBtn = document.getElementById('confirm-reg-poly-btn');
 
         const sidebarTitle = document.getElementById('sidebar-title');
         const sidebarLockIndicator = document.getElementById('sidebar-lock-indicator');
@@ -233,7 +276,7 @@
 
         let mode = 'draw'; 
         let drawType = 'polygon'; 
-        let regularPolyParams = null;
+        let regularPolyParams = { sides: 5, lengthCm: 3 };
         let shapes = []; 
         let currentShape = []; 
         
@@ -248,7 +291,7 @@
         let panStartX = 0, panStartY = 0;
         
         const pointRadius = 6;
-        const snapThreshold = 14; // 스냅 감지 픽셀 거리를 넉넉하게 설정
+        const snapThreshold = 14; 
         const closeThreshold = 15; 
         let hoverState = null; 
         let dragState = null;  
@@ -256,6 +299,7 @@
         let activePanelShapeIndex = null;
         let selectionBox = null;
         let lastMouseLogicalPos = { x: 0, y: 0 }; 
+        let lastExportContext = { indices: [], bounds: null };
 
         Object.defineProperty(window, 'lockedShapeIndex', {
             get() { return selectedShapeIndices.length === 1 ? selectedShapeIndices[0] : null; },
@@ -269,6 +313,25 @@
             setupEvents();
             updatePanels(null); 
             updateDrawToolUI();
+            updateZoomUI();
+        }
+
+        function updateZoomUI() {
+            if (zoomLevelText) {
+                zoomLevelText.innerText = Math.round(globalScale * 100) + '%';
+            }
+        }
+
+        function setZoomAtPoint(newScale, screenX, screenY) {
+            const clampedScale = Math.max(0.2, Math.min(5.0, newScale));
+            if (Math.abs(clampedScale - globalScale) < 1e-4) return;
+            const logicalX = (screenX - originX) / globalScale;
+            const logicalY = (screenY - originY) / globalScale;
+            globalScale = clampedScale;
+            originX = screenX - logicalX * globalScale;
+            originY = screenY - logicalY * globalScale;
+            updateZoomUI();
+            draw();
         }
 
         function getShapeName(shape) {
@@ -503,7 +566,8 @@
             if (originX === 0 && originY === 0) {
                 originX = rect.width / 2; originY = rect.height / 2;
             }
-            ctx.scale(dpr, dpr); draw();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            draw();
         }
 
         function getShapeBounds(shape) {
@@ -580,7 +644,8 @@
 
         function drawRulers(rect) {
             const rulerSize = 24; const pxPerCm = 50 * globalScale;
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+            const dpr = window.devicePixelRatio || 1;
+            ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, rect.width, rulerSize); ctx.fillRect(0, 0, rulerSize, rect.height);
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1; ctx.beginPath();
             ctx.moveTo(0, rulerSize); ctx.lineTo(rect.width, rulerSize); ctx.moveTo(rulerSize, 0); ctx.lineTo(rulerSize, rect.height); ctx.stroke();
@@ -613,6 +678,8 @@
 
         function draw(isPrintPreview = false, targetIndicesOnly = null) {
             const rect = canvasContainer.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, rect.width, rect.height);
             ctx.save(); ctx.translate(originX, originY); ctx.scale(globalScale, globalScale);
 
@@ -732,7 +799,6 @@
                         if (isCircleCenter) {
                             ctx.fillStyle = '#000000';
                         } else {
-                            // 부착된 교점인 경우 보라색(#9333ea)으로 표시
                             ctx.fillStyle = p.attachedTo ? '#9333ea' : (isPtHovered ? '#f59e0b' : '#ef4444');
                         }
                         
@@ -916,17 +982,49 @@
             return result;
         }
 
+        function createRegularPolygonAt(centerPos, sides, lengthCm) {
+            const n = Math.max(3, Math.min(20, parseInt(sides) || 5));
+            const lenPx = Math.max(10, (parseFloat(lengthCm) || 3) * 50);
+            const radius = lenPx / (2 * Math.sin(Math.PI / n));
+            const newShape = [];
+            const startAngle = -Math.PI / 2 - (n % 2 === 0 ? Math.PI / n : 0);
+
+            for (let i = 0; i < n; i++) {
+                const angle = startAngle + (2 * Math.PI * i) / n;
+                newShape.push({
+                    x: centerPos.x + radius * Math.cos(angle),
+                    y: centerPos.y + radius * Math.sin(angle),
+                    showAngle: defaultAngleCheck.checked,
+                    showLength: defaultLengthCheck.checked,
+                    label: getAlphabetLabel(globalVertexCount++)
+                });
+            }
+            newShape.type = 'polygon';
+            newShape.id = generateId();
+            shapes.push(newShape);
+            applyConstraints();
+            saveHistory();
+            showToast(`🌟 정${n}각형 (한 변 ${lengthCm}cm) 생성됨`);
+        }
+
         function handlePointerDown(e) {
-            if (e.button !== 0) return;
-            contextMenu.classList.add('hidden');
-            const physicalPos = getPointerPos(e); 
-            
-            if (isSpaceDown) {
+            if (e.button === 1 || (e.button === 0 && isSpaceDown)) {
+                e.preventDefault();
+                const physicalPos = getPointerPos(e);
                 isPanning = true; panStartX = physicalPos.x - originX; panStartY = physicalPos.y - originY;
                 canvas.style.cursor = 'grabbing'; return;
             }
-            
+            if (e.button !== 0) return;
+            contextMenu.classList.add('hidden');
+            const physicalPos = getPointerPos(e); 
             const pos = getLogicalPos(physicalPos);
+
+            if (mode === 'draw' && drawType === 'regular') {
+                createRegularPolygonAt(pos, regularPolyParams.sides, regularPolyParams.lengthCm);
+                draw();
+                return;
+            }
+
             const target = getHitTarget(pos.x, pos.y);
             
             if (target) {
@@ -1034,7 +1132,6 @@
                         } else if (dragState.type === 'vertex') {
                             let p = shape[dragState.vertexIndex];
                             p.x = dragState.origV.x + dx; p.y = dragState.origV.y + dy;
-                            // 마우스 위치에서 다른 도형과 교점(스냅) 감지
                             let snapHit = getHitTarget(p.x, p.y, dragState.shapeIndex);
                             if (snapHit) {
                                 let targetShape = shapes[snapHit.shapeIndex];
@@ -1078,8 +1175,10 @@
         }
 
         function handlePointerUp(e) {
+            if (isPanning && (e.button === 1 || e.button === 0)) {
+                isPanning = false; canvas.style.cursor = isSpaceDown ? 'grab' : (mode === 'draw' ? 'crosshair' : 'default'); return;
+            }
             if (e.button !== 0) return;
-            if (isPanning) { isPanning = false; canvas.style.cursor = isSpaceDown ? 'grab' : (mode === 'draw' ? 'crosshair' : 'default'); return; }
             
             if (dragState) {
                 let wasMoved = dragState.moved;
@@ -1087,8 +1186,8 @@
 
                 if (wasMoved) {
                     if (dragState.type === 'selection' && selectionBox) {
-                        if (mode === 'draw') openPrintPreview();
-                        else selectionBox = null;
+                        if (mode === 'draw') openPrintPreviewFromBox(selectionBox);
+                        selectionBox = null;
                     } else if (dragState.type !== 'selection') {
                         saveHistory();
                         if (dragState.type === 'vertex' && shapes[dragState.shapeIndex][dragState.vertexIndex].attachedTo) {
@@ -1096,11 +1195,10 @@
                         }
                     }
                 } else {
-                    if (mode === 'draw') {
+                    if (mode === 'draw' && drawType !== 'regular') {
                         let closed = false;
                         let pPos = { x: pos.x, y: pos.y };
 
-                        // 그릴 때 클릭 위치가 다른 도형의 꼭짓점/변 근처면 자동으로 교점 스냅
                         let snapHit = getHitTarget(pPos.x, pPos.y);
                         let snapAttachInfo = null;
                         if (snapHit) {
@@ -1173,7 +1271,7 @@
 
                 const printItem = document.createElement('button');
                 printItem.className = 'w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-700 flex items-center gap-2 border-b border-gray-100 font-semibold';
-                printItem.innerHTML = '<span>🖨️</span> 선택 도형 인쇄';
+                printItem.innerHTML = '<span>🖨️</span> 선택 도형 인쇄 / 저장';
                 printItem.onclick = () => { printSelectedShapes(); contextMenu.classList.add('hidden'); };
                 contextMenu.appendChild(printItem);
 
@@ -1188,26 +1286,206 @@
             } else { contextMenu.classList.add('hidden'); }
         }
 
-        function printSelectedShapes() {
-            if (selectedShapeIndices.length === 0) return alert("인쇄할 도형을 선택해주세요.");
-            const bounds = getMultipleShapesBounds(selectedShapeIndices);
-            if (!bounds) return;
-
-            const padding = 20 / globalScale;
+        function renderBoundsToPreview(bounds, targetIndices) {
+            const padding = 24 / globalScale;
             const minX = bounds.minX - padding, minY = bounds.minY - padding, maxX = bounds.maxX + padding, maxY = bounds.maxY + padding;
-            const w = maxX - minX, h = maxY - minY; if (w < 5 || h < 5) return;
+            const w = maxX - minX, h = maxY - minY;
+            if (w < 5 || h < 5) return;
 
-            draw(true, selectedShapeIndices);
+            lastExportContext = {
+                indices: targetIndices ? [...targetIndices] : shapes.map((_, i) => i),
+                bounds: { minX, minY, maxX, maxY, w, h }
+            };
+
+            draw(true, targetIndices);
             const screenMinX = (minX * globalScale) + originX, screenMinY = (minY * globalScale) + originY;
             const screenW = w * globalScale, screenH = h * globalScale, dpr = window.devicePixelRatio || 1;
 
             const cropCanvas = document.createElement('canvas');
             cropCanvas.width = screenW * dpr; cropCanvas.height = screenH * dpr;
             const cropCtx = cropCanvas.getContext('2d');
+            cropCtx.fillStyle = '#ffffff';
+            cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
             cropCtx.drawImage(canvas, screenMinX * dpr, screenMinY * dpr, screenW * dpr, screenH * dpr, 0, 0, screenW * dpr, screenH * dpr);
 
             printPreviewImg.src = cropCanvas.toDataURL('image/png');
-            printModal.classList.remove('hidden'); draw(false);
+            printModal.classList.remove('hidden');
+            draw(false);
+        }
+
+        function openPrintPreviewFromBox(box) {
+            const minX = Math.min(box.startX, box.endX), maxX = Math.max(box.startX, box.endX);
+            const minY = Math.min(box.startY, box.endY), maxY = Math.max(box.startY, box.endY);
+            if (maxX - minX < 10 || maxY - minY < 10) return;
+            renderBoundsToPreview({ minX, minY, maxX, maxY }, null);
+        }
+
+        function printSelectedShapes() {
+            if (selectedShapeIndices.length === 0) return alert("인쇄할 도형을 선택해주세요.");
+            const bounds = getMultipleShapesBounds(selectedShapeIndices);
+            if (!bounds) return;
+            renderBoundsToPreview(bounds, selectedShapeIndices);
+        }
+
+        // --- SVG / PNG / PDF 내보내기 구현 ---
+        function generateSVGString() {
+            const { indices, bounds } = lastExportContext;
+            if (!bounds) return '';
+            const { minX, minY, w, h } = bounds;
+            const escapeXml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            let svgParts = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX.toFixed(2)} ${minY.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}" width="${Math.round(w * 2)}" height="${Math.round(h * 2)}">`,
+                `<rect x="${minX.toFixed(2)}" y="${minY.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="#ffffff"/>`
+            ];
+
+            indices.forEach(sIdx => {
+                const shape = shapes[sIdx];
+                if (!shape || shape.length === 0) return;
+                const shapeType = shape.type || 'polygon';
+
+                if (shapeType === 'polygon') {
+                    const pts = shape.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+                    svgParts.push(`<polygon points="${pts}" fill="rgba(79,70,229,0.05)" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>`);
+                } else if (shapeType === 'circle') {
+                    const c = shape[0], p = shape[1], r = Math.sqrt(dist2(c, p));
+                    svgParts.push(`<circle cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="rgba(79,70,229,0.05)" stroke="#4f46e5" stroke-width="2.5"/>`);
+                    if (c.showLength !== false) {
+                        svgParts.push(`<line x1="${c.x.toFixed(2)}" y1="${c.y.toFixed(2)}" x2="${p.x.toFixed(2)}" y2="${p.y.toFixed(2)}" stroke="#4f46e5" stroke-width="1.8" stroke-dasharray="4,4"/>`);
+                        const rCm = (r / 50).toFixed(1) + ' cm';
+                        const txt = c.customLength ? c.customLength : `r = ${rCm}`;
+                        const angle = Math.atan2(p.y - c.y, p.x - c.x);
+                        const mx = (c.x + p.x) / 2 + Math.cos(angle + Math.PI / 2) * 14;
+                        const my = (c.y + p.y) / 2 + Math.sin(angle + Math.PI / 2) * 14;
+                        svgParts.push(`<text x="${mx.toFixed(2)}" y="${my.toFixed(2)}" fill="#4f46e5" font-family="sans-serif" font-size="13" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(txt)}</text>`);
+                    }
+                } else if (shapeType === 'line') {
+                    svgParts.push(`<line x1="${shape[0].x.toFixed(2)}" y1="${shape[0].y.toFixed(2)}" x2="${shape[1].x.toFixed(2)}" y2="${shape[1].y.toFixed(2)}" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>`);
+                }
+
+                if (shapeType === 'polygon' || shapeType === 'line') {
+                    let edges = [];
+                    if (shapeType === 'polygon') { for (let i = 0; i < shape.length; i++) edges.push([i, (i + 1) % shape.length]); }
+                    else edges.push([0, 1]);
+
+                    edges.forEach(([v1, v2]) => {
+                        const p1 = shape[v1], p2 = shape[v2];
+                        if (p1.showLength !== false) {
+                            const dx = p2.x - p1.x, dy = p2.y - p1.y;
+                            const lenStr = p1.customLength ? p1.customLength : ((Math.sqrt(dx * dx + dy * dy) / 50).toFixed(1) + ' cm');
+                            let isCW = (shape.length >= 3 && shapeType === 'polygon') ? (getPolygonArea(shape) > 0) : true;
+                            let nx = isCW ? dy : -dy, ny = isCW ? -dx : dx;
+                            let nLen = Math.sqrt(nx * nx + ny * ny);
+                            if (nLen > 0) { nx /= nLen; ny /= nLen; } else { nx = 0; ny = -1; }
+                            const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+                            const cx = midX + nx * 25, cy = midY + ny * 25;
+                            const tx = midX + nx * 37, ty = midY + ny * 37;
+                            svgParts.push(`<path d="M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4,4"/>`);
+                            svgParts.push(`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="#1f2937" font-family="sans-serif" font-size="13" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(lenStr)}</text>`);
+                        }
+                    });
+                }
+
+                if (shapeType === 'polygon' && shape.length >= 3) {
+                    const isCW = getPolygonArea(shape) > 0;
+                    shape.forEach((p2, i) => {
+                        if (!p2.showAngle) return;
+                        const p1 = shape[(i - 1 + shape.length) % shape.length], p3 = shape[(i + 1) % shape.length];
+                        let a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x), a2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
+                        let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
+                        let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
+                        if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
+
+                        const rArc = 22;
+                        const sx = p2.x + rArc * Math.cos(a1), sy = p2.y + rArc * Math.sin(a1);
+                        const ex = p2.x + rArc * Math.cos(a2), ey = p2.y + rArc * Math.sin(a2);
+                        const largeArc = interiorAngle > Math.PI ? 1 : 0;
+                        const sweep = isCW ? 0 : 1;
+                        svgParts.push(`<path d="M ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} L ${sx.toFixed(2)} ${sy.toFixed(2)} A ${rArc} ${rArc} 0 ${largeArc} ${sweep} ${ex.toFixed(2)} ${ey.toFixed(2)} Z" fill="rgba(245,158,11,0.2)" stroke="rgba(245,158,11,0.8)" stroke-width="2"/>`);
+
+                        const degStr = p2.customAngle ? p2.customAngle : ((interiorAngle * 180 / Math.PI).toFixed(0) + '°');
+                        const midAngle = isCW ? (a1 - interiorAngle / 2) : (a1 + interiorAngle / 2);
+                        const tx = p2.x + Math.cos(midAngle) * 36, ty = p2.y + Math.sin(midAngle) * 36;
+                        svgParts.push(`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="#1f2937" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${escapeXml(degStr)}</text>`);
+                    });
+                }
+
+                const centroid = (shapeType === 'polygon' && shape.length >= 3) ? getPolygonCentroid(shape) : null;
+                shape.forEach((p, vIdx) => {
+                    const isCircleCenter = (shapeType === 'circle' && vIdx === 0);
+                    if (isCircleCenter) {
+                        svgParts.push(`<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="${pointRadius}" fill="#000000" stroke="#ffffff" stroke-width="1.5"/>`);
+                    }
+                    if (p.label) {
+                        let lx = p.x + 12, ly = p.y - 10;
+                        if (isCircleCenter) { lx = p.x - 14; ly = p.y - 14; }
+                        else if (centroid) {
+                            const dx = p.x - centroid.x, dy = p.y - centroid.y, d = Math.sqrt(dx * dx + dy * dy);
+                            if (d > 0) { lx = p.x + (dx / d) * 18; ly = p.y + (dy / d) * 18; }
+                        }
+                        svgParts.push(`<text x="${lx.toFixed(2)}" y="${ly.toFixed(2)}" fill="#111827" font-family="Times New Roman, serif" font-size="16" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(p.label)}</text>`);
+                    }
+                });
+            });
+
+            svgParts.push('</svg>');
+            return svgParts.join('\n');
+        }
+
+        function downloadSVG() {
+            const svgStr = generateSVGString();
+            if (!svgStr) return;
+            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `shape_export_${Date.now()}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showToast('📐 SVG 벡터 파일이 다운로드되었습니다');
+        }
+
+        function downloadPNG() {
+            if (!printPreviewImg.src) return;
+            const a = document.createElement('a');
+            a.href = printPreviewImg.src;
+            a.download = `shape_export_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast('🖼️ PNG 이미지가 다운로드되었습니다');
+        }
+
+        function downloadPDF() {
+            if (!printPreviewImg.src || !window.jspdf) return;
+            const { jsPDF } = window.jspdf;
+            const img = new Image();
+            img.onload = () => {
+                const isLandscape = img.width > img.height;
+                const pdf = new jsPDF({
+                    orientation: isLandscape ? 'landscape' : 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                const pageW = pdf.internal.pageSize.getWidth();
+                const pageH = pdf.internal.pageSize.getHeight();
+                const margin = 15;
+                const availW = pageW - margin * 2;
+                const availH = pageH - margin * 2;
+                const ratio = Math.min(availW / img.width, availH / img.height);
+                const renderW = img.width * ratio;
+                const renderH = img.height * ratio;
+                const offsetX = (pageW - renderW) / 2;
+                const offsetY = (pageH - renderH) / 2;
+
+                pdf.addImage(printPreviewImg.src, 'PNG', offsetX, offsetY, renderW, renderH);
+                pdf.save(`shape_export_${Date.now()}.pdf`);
+                showToast('📄 PDF 문서가 다운로드되었습니다');
+            };
+            img.src = printPreviewImg.src;
         }
 
         function groupSelectedShapes() {
@@ -1250,6 +1528,53 @@
             }
         }
 
+        // --- 우측 패널 실시간 수치 변형 로직 ---
+        function applyEdgeLengthChange(sIdx, v1, v2, newLenCm) {
+            const shape = shapes[sIdx];
+            if (!shape || !shape[v1] || !shape[v2]) return;
+            const valCm = parseFloat(newLenCm);
+            if (isNaN(valCm) || valCm <= 0.05) return;
+
+            const p1 = shape[v1], p2 = shape[v2];
+            const dx = p2.x - p1.x, dy = p2.y - p1.y;
+            const currLen = Math.sqrt(dx * dx + dy * dy);
+            const targetLenPx = valCm * 50;
+
+            if (currLen > 1e-4) {
+                const ratio = targetLenPx / currLen;
+                p2.x = p1.x + dx * ratio;
+                p2.y = p1.y + dy * ratio;
+            } else {
+                p2.x = p1.x + targetLenPx;
+            }
+            applyConstraints();
+            draw();
+        }
+
+        function applyInteriorAngleChange(sIdx, vIdx, newAngleDeg) {
+            const shape = shapes[sIdx];
+            if (!shape || shape.length < 3 || !shape[vIdx]) return;
+            const targetDeg = parseFloat(newAngleDeg);
+            if (isNaN(targetDeg) || targetDeg <= 1 || targetDeg >= 179) return;
+
+            const n = shape.length;
+            const pPrev = shape[(vIdx - 1 + n) % n];
+            const pCurr = shape[vIdx];
+            const pNext = shape[(vIdx + 1) % n];
+
+            const isCW = getPolygonArea(shape) > 0;
+            const a1 = Math.atan2(pPrev.y - pCurr.y, pPrev.x - pCurr.x);
+            const targetRad = targetDeg * Math.PI / 180;
+            const newA2 = isCW ? (a1 - targetRad) : (a1 + targetRad);
+            const lenNext = Math.sqrt(dist2(pCurr, pNext));
+
+            pNext.x = pCurr.x + lenNext * Math.cos(newA2);
+            pNext.y = pCurr.y + lenNext * Math.sin(newA2);
+
+            applyConstraints();
+            draw();
+        }
+
         function updatePanels(sIdx, isSyncOnly = false) {
             if (selectedShapeIndices.length > 1) {
                 canvasPropsContent.classList.add('hidden'); objectPropsContent.classList.remove('hidden');
@@ -1278,6 +1603,30 @@
             const isCircle = (shape.type === 'circle');
             const isLine = (shape.type === 'line');
 
+            if (isSyncOnly && activePanelShapeIndex === sIdx) {
+                const isCW = isPolygon && shape.length >= 3 ? getPolygonArea(shape) > 0 : true;
+                multiEditForm.querySelectorAll('.angle-input').forEach(inp => {
+                    if (document.activeElement === inp) return;
+                    const idx = parseInt(inp.dataset.vidx);
+                    const v = shape[idx];
+                    const pPrev = shape[(idx - 1 + shape.length) % shape.length];
+                    const pNext = shape[(idx + 1) % shape.length];
+                    let a1 = Math.atan2(pPrev.y - v.y, pPrev.x - v.x), a2 = Math.atan2(pNext.y - v.y, pNext.x - v.x);
+                    let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
+                    let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
+                    if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
+                    inp.value = (interiorAngle * 180 / Math.PI).toFixed(1);
+                });
+                multiEditForm.querySelectorAll('.length-input').forEach(inp => {
+                    if (document.activeElement === inp) return;
+                    const v1 = parseInt(inp.dataset.vidx);
+                    const v2 = parseInt(inp.dataset.v2idx);
+                    const p1 = shape[v1], p2 = shape[v2];
+                    if (p1 && p2) inp.value = (Math.sqrt(dist2(p1, p2)) / 50).toFixed(1);
+                });
+                return;
+            }
+
             activePanelShapeIndex = sIdx; multiEditForm.innerHTML = '';
 
             if (isPolygon && shape.length >= 3) {
@@ -1304,10 +1653,21 @@
                             <label class="font-medium text-gray-700">각 ${v.label}</label>
                         </div>
                         <div class="flex items-center space-x-1 flex-1 justify-end">
-                            <input type="text" data-vidx="${idx}" value="${currentDeg}" class="angle-input w-full px-2 py-1 border rounded bg-white text-right font-mono text-xs" readonly>
+                            <input type="number" step="1" min="1" max="179" data-vidx="${idx}" value="${currentDeg}" class="angle-input w-full px-2 py-1 border rounded bg-white text-right font-mono text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none">
                             <span class="text-gray-500 font-semibold w-4 text-center select-none">°</span>
                         </div>
                     `;
+                    const inp = row.querySelector('.angle-input');
+                    inp.addEventListener('input', (e) => applyInteriorAngleChange(sIdx, idx, e.target.value));
+                    inp.addEventListener('change', () => saveHistory());
+                    inp.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        const delta = e.deltaY < 0 ? 1 : -1;
+                        const nextVal = Math.max(1, Math.min(179, (parseFloat(inp.value) || 0) + delta));
+                        inp.value = nextVal.toFixed(1);
+                        applyInteriorAngleChange(sIdx, idx, nextVal);
+                        saveHistory();
+                    });
                     multiEditForm.appendChild(row);
                 });
             }
@@ -1335,20 +1695,32 @@
                         <label class="font-medium text-gray-700 truncate">${labelText}</label>
                     </div>
                     <div class="flex items-center space-x-1 flex-1 justify-end">
-                        <input type="text" data-vidx="${v1}" value="${currLenCm}" class="length-input w-full px-2 py-1 border rounded bg-white text-right font-mono text-xs" readonly>
+                        <input type="number" step="0.1" min="0.1" data-vidx="${v1}" data-v2idx="${v2}" value="${currLenCm}" class="length-input w-full px-2 py-1 border rounded bg-white text-right font-mono text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none">
                         <span class="text-gray-500 font-semibold text-[11px] select-none pl-0.5">cm</span>
                     </div>
                 `;
+                const inp = row.querySelector('.length-input');
+                inp.addEventListener('input', (e) => applyEdgeLengthChange(sIdx, v1, v2, e.target.value));
+                inp.addEventListener('change', () => saveHistory());
+                inp.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const step = e.shiftKey ? 0.5 : 0.1;
+                    const delta = e.deltaY < 0 ? step : -step;
+                    const nextVal = Math.max(0.1, (parseFloat(inp.value) || 0) + delta);
+                    inp.value = nextVal.toFixed(1);
+                    applyEdgeLengthChange(sIdx, v1, v2, nextVal);
+                    saveHistory();
+                });
                 multiEditForm.appendChild(row);
             });
         }
 
         function toggleAngleVisible(sIdx, vIdx, isChecked) {
-            if (shapes[sIdx] && shapes[sIdx][vIdx]) { shapes[sIdx][vIdx].showAngle = isChecked; draw(); }
+            if (shapes[sIdx] && shapes[sIdx][vIdx]) { shapes[sIdx][vIdx].showAngle = isChecked; saveHistory(); draw(); }
         }
 
         function toggleLengthVisible(sIdx, vIdx, isChecked) {
-            if (shapes[sIdx] && shapes[sIdx][vIdx]) { shapes[sIdx][vIdx].showLength = isChecked; draw(); }
+            if (shapes[sIdx] && shapes[sIdx][vIdx]) { shapes[sIdx][vIdx].showLength = isChecked; saveHistory(); draw(); }
         }
 
         function deleteSelectedShapes() {
@@ -1364,6 +1736,45 @@
             drawPolygonBtn.addEventListener('click', () => setDrawType('polygon'));
             drawLineBtn.addEventListener('click', () => setDrawType('line'));
             drawCircleBtn.addEventListener('click', () => setDrawType('circle'));
+
+            // 정다각형 모달 제어
+            drawRegularPolygonBtn.addEventListener('click', () => {
+                regPolyModal.classList.remove('hidden');
+                regPolySidesInput.focus();
+            });
+            closeRegPolyModal.addEventListener('click', () => regPolyModal.classList.add('hidden'));
+            cancelRegPolyBtn.addEventListener('click', () => regPolyModal.classList.add('hidden'));
+            confirmRegPolyBtn.addEventListener('click', () => {
+                regularPolyParams = {
+                    sides: Math.max(3, Math.min(20, parseInt(regPolySidesInput.value) || 5)),
+                    lengthCm: Math.max(0.5, parseFloat(regPolyLengthInput.value) || 3)
+                };
+                regPolyModal.classList.add('hidden');
+                setDrawType('regular');
+                showToast(`🌟 캔버스를 클릭하여 정${regularPolyParams.sides}각형을 배치하세요`);
+            });
+
+            // 줌 버튼 제어
+            zoomInBtn.addEventListener('click', () => {
+                const rect = canvasContainer.getBoundingClientRect();
+                setZoomAtPoint(globalScale * 1.15, rect.width / 2, rect.height / 2);
+            });
+            zoomOutBtn.addEventListener('click', () => {
+                const rect = canvasContainer.getBoundingClientRect();
+                setZoomAtPoint(globalScale / 1.15, rect.width / 2, rect.height / 2);
+            });
+            zoomLevelText.addEventListener('click', () => {
+                const rect = canvasContainer.getBoundingClientRect();
+                setZoomAtPoint(1.0, rect.width / 2, rect.height / 2);
+            });
+
+            // 캔버스 휠 줌
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const physicalPos = getPointerPos(e);
+                const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                setZoomAtPoint(globalScale * zoomFactor, physicalPos.x, physicalPos.y);
+            }, { passive: false });
 
             groupBtn.addEventListener('click', groupSelectedShapes);
             ungroupBtn.addEventListener('click', ungroupSelectedShapes);
@@ -1383,9 +1794,84 @@
                 if (e.target !== canvas && !contextMenu.contains(e.target)) contextMenu.classList.add('hidden');
             });
 
+            // 키보드 단축키 및 Space 패닝
+            window.addEventListener('keydown', (e) => {
+                const tag = document.activeElement ? document.activeElement.tagName : '';
+                const isInputFocused = (tag === 'INPUT' || tag === 'TEXTAREA');
+
+                if (e.code === 'Space' && !isInputFocused) {
+                    if (!isSpaceDown) {
+                        isSpaceDown = true;
+                        canvas.style.cursor = 'grab';
+                    }
+                    e.preventDefault();
+                    return;
+                }
+
+                if (isInputFocused) return;
+
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    undo();
+                    showToast('↩️ 실행 취소');
+                } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+                    e.preventDefault();
+                    ungroupSelectedShapes();
+                } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+                    e.preventDefault();
+                    groupSelectedShapes();
+                } else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+                    e.preventDefault();
+                    const rect = canvasContainer.getBoundingClientRect();
+                    setZoomAtPoint(globalScale * 1.15, rect.width / 2, rect.height / 2);
+                } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                    e.preventDefault();
+                    const rect = canvasContainer.getBoundingClientRect();
+                    setZoomAtPoint(globalScale / 1.15, rect.width / 2, rect.height / 2);
+                } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                    e.preventDefault();
+                    const rect = canvasContainer.getBoundingClientRect();
+                    setZoomAtPoint(1.0, rect.width / 2, rect.height / 2);
+                } else if (e.key.toLowerCase() === 'p') {
+                    setMode('draw');
+                } else if (e.key.toLowerCase() === 'v') {
+                    setMode('select');
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (selectedShapeIndices.length > 0) {
+                        e.preventDefault();
+                        deleteSelectedShapes();
+                        showToast('🗑️ 선택 도형 삭제됨');
+                    }
+                } else if (e.key === 'Escape') {
+                    if (currentShape.length > 0) {
+                        currentShape = [];
+                        draw();
+                    } else if (selectedShapeIndices.length > 0) {
+                        selectedShapeIndices = [];
+                        updatePanels(null);
+                        draw();
+                    }
+                    regPolyModal.classList.add('hidden');
+                    printModal.classList.add('hidden');
+                    contextMenu.classList.add('hidden');
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    isSpaceDown = false;
+                    isPanning = false;
+                    canvas.style.cursor = (mode === 'draw' ? 'crosshair' : 'default');
+                }
+            });
+
+            // 모달 및 내보내기 버튼 이벤트
             closePrintModal.addEventListener('click', () => printModal.classList.add('hidden'));
             cancelPrintBtn.addEventListener('click', () => printModal.classList.add('hidden'));
             execPrintBtn.addEventListener('click', () => window.print());
+            downloadSvgBtn.addEventListener('click', downloadSVG);
+            downloadPngBtn.addEventListener('click', downloadPNG);
+            downloadPdfBtn.addEventListener('click', downloadPDF);
         }
 
         window.onload = init;

@@ -47,7 +47,7 @@
 <body class="flex h-screen bg-gray-50 text-gray-800 font-sans select-none overflow-hidden">
 
     <!-- 1. 좌측: 도구 툴바 -->
-    <aside class="w-20 bg-white border-r border-gray-200 flex flex-col items-center py-4 shadow-md z-20 shrink-0 gap-3 overflow-y-auto">
+    <aside class="w-20 bg-white border-r border-gray-200 flex flex-col items-center py-4 shadow-md z-20 shrink-0 gap-3">
         <div class="text-[10px] font-bold text-gray-400 mb-1">모드</div>
         <button id="mode-draw" class="tool-btn active w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="그리기 모드 (P)">
             <span class="text-xl">✏️</span>
@@ -59,7 +59,7 @@
         </button>
 
         <div class="w-10 border-t border-gray-200 my-1"></div>
-        <div class="text-[10px] font-bold text-gray-400 mb-1">도형 & 라벨</div>
+        <div class="text-[10px] font-bold text-gray-400 mb-1">도형</div>
 
         <button id="draw-polygon-btn" class="tool-btn active w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="다각형">
             <span class="text-xl">🔷</span>
@@ -76,10 +76,6 @@
         <button id="draw-tangent-btn" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="원 외부 접선">
             <span class="text-xl">📐</span>
             <span class="text-[9px] mt-1 font-medium text-center">외부접선</span>
-        </button>
-        <button id="draw-text-btn" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-gray-200 text-gray-600 shadow-sm" title="텍스트 라벨 (T)">
-            <span class="text-xl">🔤</span>
-            <span class="text-[10px] mt-1 font-medium">텍스트</span>
         </button>
         <button id="draw-regular-polygon-btn" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm mt-2" title="정다각형 / 직사각형 / 직각삼각형 / 부채꼴 프리셋">
             <span class="text-xl">🌟</span>
@@ -119,7 +115,7 @@
         </header>
 
         <div id="instruction-banner" class="bg-indigo-50 border-b border-indigo-100 px-4 py-2 text-sm text-indigo-700 font-medium flex items-center justify-center transition-colors z-10 shrink-0">
-            💡 <strong>단축키 & 팁:</strong> <kbd class="px-1 bg-white border rounded text-xs mx-1">Shift</kbd>고정 / <kbd class="px-1 bg-white border rounded text-xs mx-1">V</kbd>선택 / <kbd class="px-1 bg-white border rounded text-xs mx-1">U</kbd>구속해제 / <kbd class="px-1 bg-white border rounded text-xs mx-1">T</kbd>텍스트입력 / <kbd class="px-1 bg-white border rounded text-xs mx-1">Del</kbd>삭제
+            💡 <strong>단축키 & 팁:</strong> <kbd class="px-1 bg-white border rounded text-xs mx-1">Shift</kbd>고정 / <kbd class="px-1 bg-white border rounded text-xs mx-1">V</kbd>선택 / <kbd class="px-1 bg-white border rounded text-xs mx-1">U</kbd>구속해제 / <kbd class="px-1 bg-white border rounded text-xs mx-1">Space</kbd>이동 / <kbd class="px-1 bg-white border rounded text-xs mx-1">Del</kbd>삭제
         </div>
 
         <main class="flex-1 relative bg-gray-100 overflow-hidden" id="canvas-container">
@@ -168,13 +164,13 @@
 
             <div id="object-props-content" class="hidden flex flex-col gap-3">
                 <div class="text-xs text-indigo-600 font-bold uppercase tracking-wider flex justify-between items-center">
-                    <span>속성 및 수치 편집</span>
-                    <span class="text-[10px] text-gray-400 font-normal">표시/스타일/값/변수</span>
+                    <span>도형 수치 & 변수 편집</span>
+                    <span class="text-[10px] text-gray-400 font-normal">표시여부 / 기호 / 값 / 변수</span>
                 </div>
                 <div class="text-[10px] text-gray-500 text-center mb-1 bg-amber-50 p-2 rounded border border-amber-200">
                     💡 값을 입력하거나 마우스 휠을 돌리면 <strong>실시간으로 변형</strong>됩니다.
                 </div>
-                <div id="multi-edit-form" class="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-[600px] overflow-y-auto"></div>
+                <div id="multi-edit-form" class="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-[500px] overflow-y-auto"></div>
             </div>
         </div>
     </aside>
@@ -288,9 +284,8 @@
         const drawCircleBtn = document.getElementById('draw-circle-btn');
         const drawRegularPolygonBtn = document.getElementById('draw-regular-polygon-btn');
         const drawTangentBtn = document.getElementById('draw-tangent-btn');
-        const drawTextBtn = document.getElementById('draw-text-btn');
         let tangentStartPoint = null;
-        const drawBtns = [drawPolygonBtn, drawLineBtn, drawCircleBtn, drawRegularPolygonBtn, drawTangentBtn, drawTextBtn];
+        const drawBtns = [drawPolygonBtn, drawLineBtn, drawCircleBtn, drawRegularPolygonBtn, drawTangentBtn];
 
         const regPolyModal = document.getElementById('regular-poly-modal');
         const regPolySidesInput = document.getElementById('reg-poly-sides');
@@ -354,26 +349,12 @@
         let selectionBox = null;
         let lastMouseLogicalPos = { x: 0, y: 0 }; 
         let lastExportContext = { indices: [], bounds: null };
+        let textHitBoxes = [];
 
         Object.defineProperty(window, 'lockedShapeIndex', {
             get() { return selectedShapeIndices.length === 1 ? selectedShapeIndices[0] : null; },
             set(val) { selectedShapeIndices = (val === null || val === undefined) ? [] : [val]; }
         });
-
-        // 헥스 코드를 RGBA 문자열로 변환 (투명도 지원)
-        function hexToRgba(hex, alpha) {
-            let r = 79, g = 70, b = 229; 
-            if (hex) {
-                hex = hex.replace('#', '');
-                if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
-                if (hex.length === 6) {
-                    r = parseInt(hex.substring(0, 2), 16) || r;
-                    g = parseInt(hex.substring(2, 4), 16) || g;
-                    b = parseInt(hex.substring(4, 6), 16) || b;
-                }
-            }
-            return `rgba(${r}, ${g}, ${b}, ${alpha !== undefined ? alpha : 0.05})`;
-        }
 
         function isAngleBetween(target, a1, a2) {
             let diff = (a2 - a1);
@@ -414,7 +395,6 @@
         function getShapeName(shape) {
             if (!shape || shape.length === 0) return "도형";
             const shapeType = shape.type || 'polygon';
-            if (shapeType === 'text') return '텍스트 라벨';
             if (shapeType === 'circle') {
                 const centerLabel = shape[0] && shape[0].label ? shape[0].label : 'O';
                 return `원 ${centerLabel}`;
@@ -456,14 +436,6 @@
             arr.type = s.type;
             arr.id = s.id;
             arr.groupId = s.groupId;
-            arr.text = s.text;
-            arr.fontSize = s.fontSize;
-            arr.textColor = s.textColor;
-            arr.strokeWidth = s.strokeWidth;
-            arr.strokeColor = s.strokeColor;
-            arr.lineStyle = s.lineStyle;
-            arr.fillColor = s.fillColor;
-            arr.fillOpacity = s.fillOpacity;
             return arr;
         }
 
@@ -553,7 +525,6 @@
             function computeTotalError() {
                 let error = 0;
                 shapes.forEach(shape => {
-                    if (shape.type === 'text') return;
                     shape.forEach(p => {
                         if (p.attachedTo) {
                             let att = p.attachedTo;
@@ -591,7 +562,6 @@
 
                 let pointsToOptimize = [];
                 shapes.forEach(shape => {
-                    if (shape.type === 'text') return;
                     shape.forEach(p => { if (p.attachedTo) pointsToOptimize.push(p); });
                 });
 
@@ -623,7 +593,6 @@
 
             // 하드 구속 절대위치 동기화
             shapes.forEach(shape => {
-                if (shape.type === 'text') return;
                 shape.forEach(p => {
                     if (p.attachedTo) {
                         let targetShape = shapes.find(s => s.id === p.attachedTo.shapeId);
@@ -665,19 +634,6 @@
         function getShapeBounds(shape) {
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             const shapeType = shape.type || 'polygon';
-            
-            if (shapeType === 'text') {
-                const tempCtx = document.createElement('canvas').getContext('2d');
-                tempCtx.font = `${shape.fontSize || 24}px sans-serif`;
-                const metrics = tempCtx.measureText(shape.text || '텍스트');
-                const fSize = shape.fontSize || 24;
-                return { 
-                    minX: shape[0].x, minY: shape[0].y, 
-                    maxX: shape[0].x + metrics.width, maxY: shape[0].y + fSize,
-                    cx: shape[0].x + metrics.width/2, cy: shape[0].y + fSize/2
-                };
-            }
-
             if (shapeType === 'circle' || shapeType === 'sector') {
                 const c = shape[0], p = shape[1];
                 const r = Math.sqrt(dist2(c, p));
@@ -782,6 +738,7 @@
         }
 
         function draw(isPrintPreview = false, targetIndicesOnly = null) {
+            textHitBoxes = [];
             const rect = canvasContainer.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -799,57 +756,14 @@
                 const isSelected = selectedShapeIndices.includes(sIdx);
                 const isLocked = (lockedShapeIndex === sIdx);
 
-                // --- 텍스트 렌더링 ---
-                if (shapeType === 'text') {
-                    const txt = shape.text || '텍스트';
-                    const fSize = (shape.fontSize || 24) / globalScale;
-                    ctx.font = `${fSize}px sans-serif`;
-                    ctx.fillStyle = shape.textColor || '#000000';
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'top';
-                    ctx.fillText(txt, shape[0].x, shape[0].y);
-                    
-                    if (isSelected && !isPrintPreview) {
-                        const metrics = ctx.measureText(txt);
-                        ctx.strokeStyle = '#4338ca';
-                        ctx.lineWidth = 1.5 / globalScale;
-                        ctx.setLineDash([4/globalScale, 4/globalScale]);
-                        ctx.strokeRect(shape[0].x - 2/globalScale, shape[0].y - 2/globalScale, metrics.width + 4/globalScale, fSize + 4/globalScale);
-                        ctx.setLineDash([]);
-                        
-                        ctx.fillStyle = '#ffffff';
-                        const hw = 3.5 / globalScale;
-                        ctx.fillRect(shape[0].x - hw, shape[0].y - hw, hw*2, hw*2);
-                        ctx.strokeRect(shape[0].x - hw, shape[0].y - hw, hw*2, hw*2);
-                    }
-                    return; // 텍스트는 여기서 렌더링 종료
-                }
-
-                // --- 스타일 지정 ---
-                const strokeColor = shape.strokeColor || '#4f46e5';
-                const strokeWidth = (shape.strokeWidth || 2.5) / globalScale;
-                const fillColor = hexToRgba(shape.fillColor || '#4f46e5', shape.fillOpacity !== undefined ? shape.fillOpacity : 0.05);
-                const lineStyle = shape.lineStyle || 'solid';
-
                 if (isSelected && !isPrintPreview) {
-                    ctx.fillStyle = hexToRgba(shape.fillColor || '#4f46e5', Math.max(0.15, (shape.fillOpacity || 0.05) + 0.15)); 
-                    ctx.strokeStyle = '#4338ca'; 
-                    ctx.lineWidth = (shape.strokeWidth ? shape.strokeWidth + 1.5 : 4) / globalScale;
+                    ctx.fillStyle = 'rgba(79, 70, 229, 0.25)'; ctx.strokeStyle = '#4338ca'; ctx.lineWidth = 4 / globalScale;
                 } else if (isHovered && !isPrintPreview) {
-                    ctx.fillStyle = hexToRgba(shape.fillColor || '#4f46e5', Math.max(0.10, (shape.fillOpacity || 0.05) + 0.10)); 
-                    ctx.strokeStyle = strokeColor; 
-                    ctx.lineWidth = (shape.strokeWidth ? shape.strokeWidth + 1 : 3.5) / globalScale;
+                    ctx.fillStyle = 'rgba(99, 102, 241, 0.15)'; ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 3.5 / globalScale;
                 } else {
-                    ctx.fillStyle = fillColor; 
-                    ctx.strokeStyle = strokeColor; 
-                    ctx.lineWidth = strokeWidth;
+                    ctx.fillStyle = 'rgba(79, 70, 229, 0.05)'; ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2.5 / globalScale;
                 }
-                
                 ctx.lineJoin = 'round';
-                
-                if (lineStyle === 'dashed') ctx.setLineDash([8/globalScale, 8/globalScale]);
-                else if (lineStyle === 'dashdot') ctx.setLineDash([12/globalScale, 6/globalScale, 4/globalScale, 6/globalScale]);
-                else ctx.setLineDash([]);
 
                 if (shapeType === 'polygon') {
                     ctx.beginPath(); ctx.moveTo(shape[0].x, shape[0].y);
@@ -861,7 +775,7 @@
 
                     if (shape[0].showLength !== false && shape.length >= 2) {
                         ctx.save(); ctx.beginPath(); ctx.setLineDash([4/globalScale, 4/globalScale]);
-                        ctx.strokeStyle = strokeColor; ctx.lineWidth = 1.8 / globalScale;
+                        ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 1.8 / globalScale;
                         ctx.moveTo(center.x, center.y); ctx.lineTo(edgePoint.x, edgePoint.y); ctx.stroke(); ctx.restore();
 
                         const rCm = (r / 50).toFixed(1) + ' cm';
@@ -871,7 +785,9 @@
                         const midY = (center.y + edgePoint.y) / 2 + Math.sin(angle + Math.PI/2) * (14/globalScale);
                         
                         ctx.font = `bold italic ${13/globalScale}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillStyle = strokeColor; ctx.fillText(displayRadiusStr, midX, midY);
+                        let fOffX = shape[0].lengthOffset ? shape[0].lengthOffset.x : 0; let fOffY = shape[0].lengthOffset ? shape[0].lengthOffset.y : 0;
+                        ctx.fillStyle = '#4f46e5'; ctx.fillText(displayRadiusStr, midX + fOffX, midY + fOffY);
+                        if (!isPrintPreview) { let m = ctx.measureText(displayRadiusStr); textHitBoxes.push({ type: 'length_label', shapeIndex: sIdx, v1: 0, minX: midX + fOffX - m.width/2 - 5, maxX: midX + fOffX + m.width/2 + 5, minY: midY + fOffY - 10, maxY: midY + fOffY + 10 }); }
                     }
                 } else if (shapeType === 'sector') {
                     const c = shape[0], p1 = shape[1], p2 = shape[2];
@@ -887,7 +803,7 @@
 
                     if (c.showLength !== false) {
                         ctx.save(); ctx.beginPath(); ctx.setLineDash([4/globalScale, 4/globalScale]);
-                        ctx.strokeStyle = strokeColor; ctx.lineWidth = 1.8 / globalScale;
+                        ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 1.8 / globalScale;
                         ctx.moveTo(c.x, c.y); ctx.lineTo(p1.x, p1.y); ctx.stroke(); ctx.restore();
 
                         const rCm = (r / 50).toFixed(1) + ' cm';
@@ -896,7 +812,9 @@
                         const midY = (c.y + p1.y) / 2 + Math.sin(a1 + Math.PI/2) * (14/globalScale);
                         
                         ctx.font = `bold italic ${13/globalScale}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillStyle = strokeColor; ctx.fillText(displayRadiusStr, midX, midY);
+                        let fOffX = c.lengthOffset ? c.lengthOffset.x : 0; let fOffY = c.lengthOffset ? c.lengthOffset.y : 0;
+                        ctx.fillStyle = '#4f46e5'; ctx.fillText(displayRadiusStr, midX + fOffX, midY + fOffY);
+                        if (!isPrintPreview) { let m = ctx.measureText(displayRadiusStr); textHitBoxes.push({ type: 'length_label', shapeIndex: sIdx, v1: 0, minX: midX + fOffX - m.width/2 - 5, maxX: midX + fOffX + m.width/2 + 5, minY: midY + fOffY - 10, maxY: midY + fOffY + 10 }); }
                     }
 
                     if (c.showAngle !== false) {
@@ -904,7 +822,6 @@
                         while (diff < 0) diff += Math.PI * 2;
                         
                         ctx.beginPath(); ctx.strokeStyle = 'rgba(245, 158, 11, 0.8)'; ctx.lineWidth = 2 / globalScale; ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
-                        ctx.setLineDash([]); // 각도 표시는 실선으로
                         ctx.arc(c.x, c.y, 22 / globalScale, a1, a2, false); ctx.lineTo(c.x, c.y); ctx.fill(); ctx.stroke();
 
                         let deg = (diff * 180 / Math.PI).toFixed(0) + '°';
@@ -914,14 +831,14 @@
                         const ty = c.y + Math.sin(midAngle) * (36/globalScale);
                         
                         ctx.font = `bold ${11/globalScale}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillStyle = '#1f2937'; ctx.fillText(displayAngleStr, tx, ty);
+                        let aOffX = c.angleOffset ? c.angleOffset.x : 0; let aOffY = c.angleOffset ? c.angleOffset.y : 0;
+                        ctx.fillStyle = '#1f2937'; ctx.fillText(displayAngleStr, tx + aOffX, ty + aOffY);
+                        if (!isPrintPreview) { let m = ctx.measureText(displayAngleStr); textHitBoxes.push({ type: 'angle_label', shapeIndex: sIdx, vertexIndex: 0, minX: tx + aOffX - m.width/2 - 5, maxX: tx + aOffX + m.width/2 + 5, minY: ty + aOffY - 10, maxY: ty + aOffY + 10 }); }
                     }
 
                 } else if (shapeType === 'line') {
                     ctx.beginPath(); ctx.moveTo(shape[0].x, shape[0].y); ctx.lineTo(shape[1].x, shape[1].y); ctx.stroke();
                 }
-
-                ctx.setLineDash([]); // 항상 실선으로 초기화
 
                 if (shapeType === 'polygon' || shapeType === 'line') {
                     let edges = [];
@@ -940,7 +857,7 @@
                         const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
 
                         if (p1.edgeDeco) {
-                            ctx.save(); ctx.strokeStyle = strokeColor; ctx.lineWidth = 2 / globalScale; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+                            ctx.save(); ctx.strokeStyle = '#4338ca'; ctx.lineWidth = 2 / globalScale; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
                             const dirX = dx / lengthPx, dirY = dy / lengthPx;
                             const hatchLen = 12 / globalScale;
                             const hatchSpacing = 6 / globalScale;
@@ -980,7 +897,10 @@
                             ctx.moveTo(p1.x, p1.y); ctx.quadraticCurveTo(controlX, controlY, p2.x, p2.y); ctx.stroke(); ctx.restore();
 
                             ctx.font = `italic ${13/globalScale}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                            ctx.fillStyle = '#1f2937'; ctx.fillText(displayLengthStr, textOffsetX, textOffsetY);
+                            let fOffX = p1.lengthOffset ? p1.lengthOffset.x : 0; let fOffY = p1.lengthOffset ? p1.lengthOffset.y : 0;
+                            let fTx = textOffsetX + fOffX; let fTy = textOffsetY + fOffY;
+                            ctx.fillStyle = '#1f2937'; ctx.fillText(displayLengthStr, fTx, fTy);
+                            if (!isPrintPreview) { let m = ctx.measureText(displayLengthStr); textHitBoxes.push({ type: 'length_label', shapeIndex: sIdx, v1: v1, minX: fTx - m.width/2 - 5, maxX: fTx + m.width/2 + 5, minY: fTy - 10, maxY: fTy + 10 }); }
                         }
                     });
                 }
@@ -1018,7 +938,10 @@
                         let midAngle = isCW ? (a1 - interiorAngle / 2) : (a1 + interiorAngle / 2);
                         const tx = p2.x + Math.cos(midAngle) * (36/globalScale), ty = p2.y + Math.sin(midAngle) * (36/globalScale);
                         ctx.font = `bold ${11/globalScale}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillStyle = '#1f2937'; ctx.fillText(displayAngleStr, tx, ty);
+                        let aOffX = p2.angleOffset ? p2.angleOffset.x : 0; let aOffY = p2.angleOffset ? p2.angleOffset.y : 0;
+                        let fTx = tx + aOffX; let fTy = ty + aOffY;
+                        ctx.fillStyle = '#1f2937'; ctx.fillText(displayAngleStr, fTx, fTy);
+                        if (!isPrintPreview) { let m = ctx.measureText(displayAngleStr); textHitBoxes.push({ type: 'angle_label', shapeIndex: sIdx, vertexIndex: i, minX: fTx - m.width/2 - 5, maxX: fTx + m.width/2 + 5, minY: fTy - 10, maxY: fTy + 10 }); }
                     });
                 }
 
@@ -1058,7 +981,10 @@
                                 labelY = p.y + (dirY / dist) * (18/globalScale);
                             }
                         }
-                        ctx.fillText(p.label, labelX, labelY);
+                        let lOffX = p.labelOffset ? p.labelOffset.x : 0; let lOffY = p.labelOffset ? p.labelOffset.y : 0;
+                        let fTx = labelX + lOffX; let fTy = labelY + lOffY;
+                        ctx.fillText(p.label, fTx, fTy);
+                        if (!isPrintPreview) { let m = ctx.measureText(p.label); textHitBoxes.push({ type: 'vertex_label', shapeIndex: sIdx, vertexIndex: vIdx, minX: fTx - m.width/2 - 5, maxX: fTx + m.width/2 + 5, minY: fTy - 10, maxY: fTy + 10 }); }
                     }
                 });
 
@@ -1158,6 +1084,7 @@
                 ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); ctx.restore();
             }
 
+            // --- Midpoint hover feedback ---
             if (hoverState && hoverState.type === 'midpoint' && !isPrintPreview) {
                 ctx.save();
                 ctx.beginPath();
@@ -1167,6 +1094,7 @@
                 ctx.restore();
             }
             
+            // --- Intersection hover feedback ---
             if (hoverState && hoverState.type === 'intersection' && !isPrintPreview) {
                 ctx.save();
                 ctx.beginPath();
@@ -1217,6 +1145,7 @@
             return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
         }
         function distToSegment(p, v, w) { return Math.sqrt(distToSegmentSquared(p, v, w)); }
+
 
         function getLineLineIntersection(p1, p2, p3, p4) {
             const d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
@@ -1274,7 +1203,6 @@
                 if (sIdx === ignoreShapeIndex) continue;
                 const shape = shapes[sIdx];
                 const type = shape.type || 'polygon';
-                if (type === 'text') continue;
                 if (type === 'polygon') {
                     for (let i = 0; i < shape.length; i++) {
                         segments.push({ shapeIndex: sIdx, p1: shape[i], p2: shape[(i+1)%shape.length], v1: i, v2: (i+1)%shape.length });
@@ -1321,6 +1249,11 @@
         }
 
         function getHitTarget(x, y, ignoreShapeIndex = -1) {
+            for (let i = textHitBoxes.length - 1; i >= 0; i--) {
+                let box = textHitBoxes[i];
+                if (ignoreShapeIndex !== -1 && box.shapeIndex === ignoreShapeIndex) continue;
+                if (x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY) return box;
+            }
             const p = {x, y};
             const clickTol = snapThreshold / globalScale;
             
@@ -1341,28 +1274,16 @@
             
             for (let sIdx = shapes.length - 1; sIdx >= 0; sIdx--) {
                 if (sIdx === ignoreShapeIndex) continue;
-                const shape = shapes[sIdx], shapeType = shape.type || 'polygon';
-                
-                if (shapeType === 'text') {
-                    const tempCtx = document.createElement('canvas').getContext('2d');
-                    tempCtx.font = `${shape.fontSize || 24}px sans-serif`;
-                    const metrics = tempCtx.measureText(shape.text || '텍스트');
-                    const fSize = shape.fontSize || 24;
-                    if (x >= shape[0].x && x <= shape[0].x + metrics.width && y >= shape[0].y && y <= shape[0].y + fSize) {
-                        return { type: 'shape', shapeIndex: sIdx };
-                    }
-                    continue;
-                }
-
+                const shape = shapes[sIdx];
                 for (let vIdx = 0; vIdx < shape.length; vIdx++) {
                     if (Math.sqrt(dist2(p, shape[vIdx])) <= clickTol) return { type: 'vertex', shapeIndex: sIdx, vertexIndex: vIdx };
                 }
             }
 
+            // --- Midpoint check before edges ---
             for (let sIdx = shapes.length - 1; sIdx >= 0; sIdx--) {
                 if (sIdx === ignoreShapeIndex) continue;
                 const shape = shapes[sIdx], shapeType = shape.type || 'polygon';
-                if (shapeType === 'text') continue;
                 let edges = [];
                 if (shapeType === 'polygon') { for (let i = 0; i < shape.length; i++) edges.push([i, (i+1)%shape.length]); }
                 else if (shapeType === 'line') edges.push([0, 1]);
@@ -1375,7 +1296,8 @@
                     }
                 }
             }
-            
+            // -----------------------------------
+            // --- Intersection check ---
             let intersections = getAllIntersections(ignoreShapeIndex);
             for(let i=0; i<intersections.length; i++) {
                 let ix = intersections[i];
@@ -1383,12 +1305,11 @@
                     return { type: 'intersection', x: ix.x, y: ix.y, s1: ix.s1, s2: ix.s2 };
                 }
             }
+            // --------------------------
 
             for (let sIdx = shapes.length - 1; sIdx >= 0; sIdx--) {
                 if (sIdx === ignoreShapeIndex) continue;
                 const shape = shapes[sIdx], shapeType = shape.type || 'polygon';
-                if (shapeType === 'text') continue;
-                
                 if (shapeType === 'circle') {
                     const C = shape[0], P1 = shape[1], R = Math.sqrt(dist2(C, P1)), d = Math.sqrt(dist2(p, C));
                     if (Math.abs(d - R) <= clickTol) return { type: 'circle_edge', shapeIndex: sIdx };
@@ -1413,12 +1334,9 @@
                     if (distToSegment(p, shape[edges[i][0]], shape[edges[i][1]]) <= clickTol) return { type: 'edge', shapeIndex: sIdx, v1: edges[i][0], v2: edges[i][1] };
                 }
             }
-            
             for (let sIdx = shapes.length - 1; sIdx >= 0; sIdx--) {
                 if (sIdx === ignoreShapeIndex) continue;
                 const shape = shapes[sIdx], shapeType = shape.type || 'polygon';
-                if (shapeType === 'text') continue;
-                
                 if (shapeType === 'polygon') {
                     ctx.beginPath(); ctx.moveTo(shape[0].x, shape[0].y);
                     for (let i = 1; i < shape.length; i++) ctx.lineTo(shape[i].x, shape[i].y);
@@ -1475,13 +1393,20 @@
             const L = Math.sqrt(dx*dx + dy*dy);
             if (L === 0) return;
             
-            const nx = -dy / L; const ny = dx / L; const offset = 50; 
+            const nx = -dy / L;
+            const ny = dx / L;
+            const offset = 50; 
             
             const newP1 = { x: p1.x + nx * offset, y: p1.y + ny * offset, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) };
             const newP2 = { x: p2.x + nx * offset, y: p2.y + ny * offset, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) };
             
-            const newLine = [newP1, newP2]; newLine.type = 'line'; newLine.id = generateId();
-            shapes.push(newLine); saveHistory(); draw(); showToast('∥ 평행선이 생성되었습니다.');
+            const newLine = [newP1, newP2];
+            newLine.type = 'line';
+            newLine.id = generateId();
+            shapes.push(newLine);
+            saveHistory();
+            draw();
+            showToast('∥ 평행선이 생성되었습니다.');
         };
 
         window.createPerpendicularLine = function(sIdx, v1, v2) {
@@ -1492,37 +1417,58 @@
             const L = Math.sqrt(dx*dx + dy*dy);
             if (L === 0) return;
             
-            const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
-            const nx = -dy / L, ny = dx / L;
+            const mx = (p1.x + p2.x) / 2;
+            const my = (p1.y + p2.y) / 2;
+            
+            const nx = -dy / L;
+            const ny = dx / L;
             
             const newP1 = { x: mx, y: my, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) };
             const newP2 = { x: mx + nx * L, y: my + ny * L, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) };
             
-            const newLine = [newP1, newP2]; newLine.type = 'line'; newLine.id = generateId();
-            shapes.push(newLine); saveHistory(); draw(); showToast('⟂ 수직선이 생성되었습니다.');
+            const newLine = [newP1, newP2];
+            newLine.type = 'line';
+            newLine.id = generateId();
+            shapes.push(newLine);
+            saveHistory();
+            draw();
+            showToast('⟂ 수직선이 생성되었습니다.');
         };
 
         window.createAngleBisector = function(sIdx, vIdx) {
             const shape = shapes[sIdx];
             if (!shape || shape.length < 3 || shape.type !== 'polygon') return;
             const n = shape.length;
-            const p2 = shape[vIdx], p1 = shape[(vIdx - 1 + n) % n], p3 = shape[(vIdx + 1) % n];
+            const p2 = shape[vIdx];
+            const p1 = shape[(vIdx - 1 + n) % n];
+            const p3 = shape[(vIdx + 1) % n];
             
             const isCW = getPolygonArea(shape) > 0;
-            const a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x), a2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
+            const a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
+            const a2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
             
-            let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
-            let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW; if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI; 
+            let angleCCW = a2 - a1; 
+            while (angleCCW < 0) angleCCW += 2 * Math.PI;
+            
+            let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
+            if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI; 
             
             const midAngle = isCW ? (a1 - interiorAngle / 2) : (a1 + interiorAngle / 2);
+            
             const len = 100; 
             const newP1 = { x: p2.x, y: p2.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) };
             newP1.attachedTo = { shapeId: shape.id, type: 'vertex', vertexIndex: vIdx };
             
             const newP2 = { x: p2.x + len * Math.cos(midAngle), y: p2.y + len * Math.sin(midAngle), showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) };
             
-            const newLine = [newP1, newP2]; newLine.type = 'line'; newLine.id = generateId();
-            shapes.push(newLine); applyConstraints(); saveHistory(); draw(); showToast('📐 내각의 이등분선이 생성되었습니다.');
+            const newLine = [newP1, newP2];
+            newLine.type = 'line';
+            newLine.id = generateId();
+            shapes.push(newLine);
+            applyConstraints();
+            saveHistory();
+            draw();
+            showToast('📐 내각의 이등분선이 생성되었습니다.');
         };
 
         function createPresetShapeAt(centerPos, params) {
@@ -1530,93 +1476,144 @@
             const n = Math.max(3, Math.min(20, parseInt(params.sides) || 5));
             const lenCm = Math.max(0.5, parseFloat(params.lengthCm) || 3);
             const heightCm = Math.max(0.5, parseFloat(params.heightCm) || 2);
-            const lenPx = lenCm * 50; const heightPx = heightCm * 50;
-            const newShape = []; let toastMsg = '';
+            const lenPx = lenCm * 50;
+            const heightPx = heightCm * 50;
+            const newShape = [];
+            let toastMsg = '';
 
             if (preset === 'rectangle') {
-                const halfW = lenPx / 2, halfH = heightPx / 2;
-                const coords = [{ x: centerPos.x - halfW, y: centerPos.y - halfH }, { x: centerPos.x + halfW, y: centerPos.y - halfH }, { x: centerPos.x + halfW, y: centerPos.y + halfH }, { x: centerPos.x - halfW, y: centerPos.y + halfH }];
-                coords.forEach(pt => newShape.push({ x: pt.x, y: pt.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }));
-                newShape.type = 'polygon'; toastMsg = `▭ 직사각형 (가로 ${lenCm}cm, 세로 ${heightCm}cm) 생성됨`;
+                const halfW = lenPx / 2;
+                const halfH = heightPx / 2;
+                const coords = [
+                    { x: centerPos.x - halfW, y: centerPos.y - halfH },
+                    { x: centerPos.x + halfW, y: centerPos.y - halfH },
+                    { x: centerPos.x + halfW, y: centerPos.y + halfH },
+                    { x: centerPos.x - halfW, y: centerPos.y + halfH }
+                ];
+                coords.forEach(pt => {
+                    newShape.push({ x: pt.x, y: pt.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) });
+                });
+                newShape.type = 'polygon';
+                toastMsg = `▭ 직사각형 (가로 ${lenCm}cm, 세로 ${heightCm}cm) 생성됨`;
             } else if (preset === 'right_triangle') {
-                const baseW = lenPx, heightH = heightPx, gx = baseW / 3, gy = -heightH / 3;
-                const coords = [{ x: centerPos.x - gx, y: centerPos.y - heightH - gy }, { x: centerPos.x - gx, y: centerPos.y - gy }, { x: centerPos.x + baseW - gx, y: centerPos.y - gy }];
-                coords.forEach(pt => newShape.push({ x: pt.x, y: pt.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }));
-                newShape.type = 'polygon'; toastMsg = `📐 직각삼각형 (밑변 ${lenCm}cm, 높이 ${heightCm}cm) 생성됨`;
+                const baseW = lenPx;
+                const heightH = heightPx;
+                const gx = baseW / 3;
+                const gy = -heightH / 3;
+                const coords = [
+                    { x: centerPos.x + (0 - gx), y: centerPos.y + (-heightH - gy) },
+                    { x: centerPos.x + (0 - gx), y: centerPos.y + (0 - gy) },
+                    { x: centerPos.x + (baseW - gx), y: centerPos.y + (0 - gy) }
+                ];
+                coords.forEach(pt => {
+                    newShape.push({ x: pt.x, y: pt.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) });
+                });
+                newShape.type = 'polygon';
+                toastMsg = `📐 직각삼각형 (밑변 ${lenCm}cm, 높이 ${heightCm}cm) 생성됨`;
             } else if (preset === 'sector') {
                 const startAngleDeg = parseFloat(document.getElementById('sector-start-angle').value) || 0;
                 const endAngleDeg = parseFloat(document.getElementById('sector-end-angle').value) || 60;
-                const startAngle = startAngleDeg * Math.PI / 180, endAngle = endAngleDeg * Math.PI / 180;
+                const startAngle = startAngleDeg * Math.PI / 180;
+                const endAngle = endAngleDeg * Math.PI / 180;
+                
                 newShape.push({ x: centerPos.x, y: centerPos.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: 'O' });
                 newShape.push({ x: centerPos.x + lenPx * Math.cos(startAngle), y: centerPos.y + lenPx * Math.sin(startAngle), showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) });
                 newShape.push({ x: centerPos.x + lenPx * Math.cos(endAngle), y: centerPos.y + lenPx * Math.sin(endAngle), showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) });
-                newShape.type = 'sector'; toastMsg = `🍕 부채꼴 (반지름 ${lenCm}cm, ${startAngleDeg}°~${endAngleDeg}°) 생성됨`;
+                newShape.type = 'sector';
+                toastMsg = `🍕 부채꼴 (반지름 ${lenCm}cm, ${startAngleDeg}°~${endAngleDeg}°) 생성됨`;
             } else {
-                const radius = lenPx / (2 * Math.sin(Math.PI / n)), startAngle = -Math.PI / 2 - (n % 2 === 0 ? Math.PI / n : 0);
+                const radius = lenPx / (2 * Math.sin(Math.PI / n));
+                const startAngle = -Math.PI / 2 - (n % 2 === 0 ? Math.PI / n : 0);
                 for (let i = 0; i < n; i++) {
                     const angle = startAngle + (2 * Math.PI * i) / n;
                     newShape.push({ x: centerPos.x + radius * Math.cos(angle), y: centerPos.y + radius * Math.sin(angle), showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) });
                 }
-                newShape.type = 'polygon'; toastMsg = `🌟 정${n}각형 (한 변 ${lenCm}cm) 생성됨`;
+                newShape.type = 'polygon';
+                toastMsg = `🌟 정${n}각형 (한 변 ${lenCm}cm) 생성됨`;
             }
 
-            newShape.id = generateId(); shapes.push(newShape); applyConstraints(); saveHistory(); showToast(toastMsg);
+            newShape.id = generateId();
+            shapes.push(newShape);
+            applyConstraints();
+            saveHistory();
+            showToast(toastMsg);
         }
+
         
         function addTangentsFromPointToCircle(px, py, circleShape) {
-            const center = circleShape[0], edge = circleShape[1];
-            const cx = center.x, cy = center.y, r = Math.sqrt(dist2(center, edge));
-            const dx = px - cx, dy = py - cy, distance = Math.sqrt(dx * dx + dy * dy);
+            const center = circleShape[0];
+            const edge = circleShape[1];
+            const cx = center.x, cy = center.y;
+            const r = Math.sqrt(dist2(center, edge));
             
-            if (distance <= r) { showToast("선택한 점이 원 내부나 경계에 있어 접선을 작도할 수 없습니다."); return; }
+            const dx = px - cx;
+            const dy = py - cy;
+            const distance = Math.sqrt(dx * dx + dy * dy);
             
-            const angleToPoint = Math.atan2(dy, dx), angleToTangent = Math.acos(r / distance);
-            const t1x = cx + r * Math.cos(angleToPoint + angleToTangent), t1y = cy + r * Math.sin(angleToPoint + angleToTangent);
-            const t2x = cx + r * Math.cos(angleToPoint - angleToTangent), t2y = cy + r * Math.sin(angleToPoint - angleToTangent);
+            if (distance <= r) {
+                showToast("선택한 점이 원 내부나 경계에 있어 접선을 작도할 수 없습니다.");
+                return;
+            }
             
-            const tangentLine1 = [{ x: px, y: py, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }, { x: t1x, y: t1y, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }];
-            tangentLine1.type = 'line'; tangentLine1.id = generateId();
-            const tangentLine2 = [{ x: px, y: py, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }, { x: t2x, y: t2y, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }];
-            tangentLine2.type = 'line'; tangentLine2.id = generateId();
+            const angleToPoint = Math.atan2(dy, dx);
+            const angleToTangent = Math.acos(r / distance);
             
-            shapes.push(tangentLine1, tangentLine2); applyConstraints(); saveHistory();
+            const t1x = cx + r * Math.cos(angleToPoint + angleToTangent);
+            const t1y = cy + r * Math.sin(angleToPoint + angleToTangent);
+            
+            const t2x = cx + r * Math.cos(angleToPoint - angleToTangent);
+            const t2y = cy + r * Math.sin(angleToPoint - angleToTangent);
+            
+            const tangentLine1 = [
+                { x: px, y: py, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) },
+                { x: t1x, y: t1y, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }
+            ];
+            tangentLine1.type = 'line';
+            tangentLine1.id = generateId();
+            
+            const tangentLine2 = [
+                { x: px, y: py, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) },
+                { x: t2x, y: t2y, showLength: defaultLengthCheck.checked, label: getAlphabetLabel(globalVertexCount++) }
+            ];
+            tangentLine2.type = 'line';
+            tangentLine2.id = generateId();
+            
+            shapes.push(tangentLine1, tangentLine2);
+            applyConstraints();
+            saveHistory();
         }
 
         function handlePointerDown(e) {
             if (e.button === 1 || (e.button === 0 && isSpaceDown)) {
-                e.preventDefault(); const physicalPos = getPointerPos(e);
+                e.preventDefault();
+                const physicalPos = getPointerPos(e);
                 isPanning = true; panStartX = physicalPos.x - originX; panStartY = physicalPos.y - originY;
                 canvas.style.cursor = 'grabbing'; return;
             }
             if (e.button !== 0) return;
             contextMenu.classList.add('hidden');
-            const physicalPos = getPointerPos(e); const pos = getLogicalPos(physicalPos);
+            const physicalPos = getPointerPos(e); 
+            const pos = getLogicalPos(physicalPos);
 
             if (mode === 'draw' && drawType === 'regular') {
                 let centerPos = { x: pos.x, y: pos.y };
                 if (showGridCheck.checked) centerPos = applyGridSnap(centerPos);
                 createPresetShapeAt(centerPos, regularPolyParams);
-                selectedShapeIndices = [shapes.length - 1]; setMode('select'); updatePanels(lockedShapeIndex);
-                canvas.style.cursor = 'pointer'; draw(); return;
-            }
-            
-            if (mode === 'draw' && drawType === 'text') {
-                const textShape = [{ x: pos.x, y: pos.y }];
-                textShape.type = 'text';
-                textShape.text = '텍스트를 입력하세요';
-                textShape.fontSize = 24;
-                textShape.textColor = '#000000';
-                textShape.id = generateId();
-                shapes.push(textShape);
-                saveHistory();
                 selectedShapeIndices = [shapes.length - 1];
-                setMode('select'); updatePanels(shapes.length - 1); draw(); return;
+                setMode('select');
+                updatePanels(lockedShapeIndex);
+                canvas.style.cursor = 'pointer';
+                draw();
+                return;
             }
 
             const target = (mode === 'select') ? getHitTarget(pos.x, pos.y) : null;
             
             if (target) {
-                if (target.type === 'shape') { const newIdx = bringShapeToFront(target.shapeIndex); target.shapeIndex = newIdx; }
+                if (target.type === 'shape') {
+                    const newIdx = bringShapeToFront(target.shapeIndex);
+                    target.shapeIndex = newIdx;
+                }
                 const hitGroupIndices = getGroupIndices(target.shapeIndex);
 
                 if (e.shiftKey) {
@@ -1634,28 +1631,48 @@
                 const shape = shapes[target.shapeIndex];
                 dragState = { ...target, startX: pos.x, startY: pos.y, moved: false };
 
-                if (selectedShapeIndices.length > 1 && (target.type === 'shape' || target.type === 'edge' || target.type === 'vertex')) {
+                if (target.type && target.type.endsWith('_label')) {
+                    if (target.type === 'vertex_label') { dragState.origOffset = shape[target.vertexIndex].labelOffset ? {...shape[target.vertexIndex].labelOffset} : {x:0, y:0}; }
+                    else if (target.type === 'length_label') { dragState.origOffset = shape[target.v1].lengthOffset ? {...shape[target.v1].lengthOffset} : {x:0, y:0}; }
+                    else if (target.type === 'angle_label') { dragState.origOffset = shape[target.vertexIndex].angleOffset ? {...shape[target.vertexIndex].angleOffset} : {x:0, y:0}; }
+                } else if (selectedShapeIndices.length > 1 && (target.type === 'shape' || target.type === 'edge' || target.type === 'vertex')) {
                     dragState.type = 'multi_shapes';
-                    dragState.origMultiShapes = selectedShapeIndices.map(sIdx => ({ index: sIdx, shape: shapes[sIdx].map(p => ({ ...p })) }));
-                } else if (target.type === 'vertex') { dragState.origV = { ...shape[target.vertexIndex] };
-                } else if (target.type === 'edge') { dragState.origV1 = { ...shape[target.v1] }; dragState.origV2 = { ...shape[target.v2] };
-                } else if (target.type === 'shape' || target.type === 'bb_handle') { dragState.origShape = shape.map(p => ({...p})); }
+                    dragState.origMultiShapes = selectedShapeIndices.map(sIdx => ({
+                        index: sIdx, shape: shapes[sIdx].map(p => ({ ...p }))
+                    }));
+                } else if (target.type === 'vertex') {
+                    dragState.origV = { ...shape[target.vertexIndex] };
+                } else if (target.type === 'edge') {
+                    dragState.origV1 = { ...shape[target.v1] }; dragState.origV2 = { ...shape[target.v2] };
+                } else if (target.type === 'shape' || target.type === 'bb_handle') {
+                    dragState.origShape = shape.map(p => ({...p}));
+                }
             } else {
-                if (mode === 'select' && !e.shiftKey) { selectedShapeIndices = []; updatePanels(null); draw(); }
+                if (mode === 'select' && !e.shiftKey) {
+                    selectedShapeIndices = []; updatePanels(null); draw();
+                }
                 dragState = { type: 'selection', startX: pos.x, startY: pos.y, moved: false };
             }
         }
 
         function handlePointerMove(e) {
             const physicalPos = getPointerPos(e); 
-            if (isPanning) { originX = physicalPos.x - panStartX; originY = physicalPos.y - panStartY; draw(); return; }
+            if (isPanning) {
+                originX = physicalPos.x - panStartX; originY = physicalPos.y - panStartY; draw(); return;
+            }
             
-            const pos = getLogicalPos(physicalPos); lastMouseLogicalPos = pos; isShiftDown = e.shiftKey;
+            const pos = getLogicalPos(physicalPos); 
+            lastMouseLogicalPos = pos;
+            isShiftDown = e.shiftKey;
             const target = getHitTarget(pos.x, pos.y, dragState && dragState.shapeIndex !== undefined ? dragState.shapeIndex : -1);
             hoverState = target;
 
-            if (selectedShapeIndices.length !== 1) updatePanels(target ? target.shapeIndex : null);
-            else updatePanels(lockedShapeIndex, true);
+            if (selectedShapeIndices.length !== 1) {
+                let activeShapeIndex = target ? target.shapeIndex : null;
+                updatePanels(activeShapeIndex);
+            } else {
+                updatePanels(lockedShapeIndex, true);
+            }
 
             if (dragState) {
                 const dx = pos.x - dragState.startX, dy = pos.y - dragState.startY;
@@ -1674,66 +1691,109 @@
                         }
                     } else {
                         const shape = shapes[dragState.shapeIndex];
-                        if (dragState.type === 'multi_shapes') {
+                        if (dragState.type && dragState.type.endsWith('_label')) {
+                            if (dragState.type === 'vertex_label') shape[dragState.vertexIndex].labelOffset = { x: dragState.origOffset.x + dx, y: dragState.origOffset.y + dy };
+                            else if (dragState.type === 'length_label') shape[dragState.v1].lengthOffset = { x: dragState.origOffset.x + dx, y: dragState.origOffset.y + dy };
+                            else if (dragState.type === 'angle_label') shape[dragState.vertexIndex].angleOffset = { x: dragState.origOffset.x + dx, y: dragState.origOffset.y + dy };
+                        } else if (dragState.type === 'multi_shapes') {
                             let rawDx = dx; let rawDy = dy;
                             if (showGridCheck.checked && dragState.origMultiShapes.length > 0 && dragState.origMultiShapes[0].shape.length > 0) {
                                 let firstV = dragState.origMultiShapes[0].shape[0];
                                 let targetV = applyGridSnap({x: firstV.x + dx, y: firstV.y + dy});
-                                rawDx = targetV.x - firstV.x; rawDy = targetV.y - firstV.y;
+                                rawDx = targetV.x - firstV.x;
+                                rawDy = targetV.y - firstV.y;
                             }
                             dragState.origMultiShapes.forEach(item => {
                                 const targetS = shapes[item.index];
-                                for (let i = 0; i < targetS.length; i++) { targetS[i].x = item.shape[i].x + rawDx; targetS[i].y = item.shape[i].y + rawDy; }
+                                for (let i = 0; i < targetS.length; i++) {
+                                    targetS[i].x = item.shape[i].x + rawDx; targetS[i].y = item.shape[i].y + rawDy;
+                                }
                             });
                             applyConstraints();
                         } else if (dragState.type === 'bb_handle') {
                             const origCx = dragState.cx, origCy = dragState.cy;
                             const startDist = Math.sqrt(Math.pow(dragState.startX - origCx, 2) + Math.pow(dragState.startY - origCy, 2));
                             const currentDist = Math.sqrt(Math.pow(pos.x - origCx, 2) + Math.pow(pos.y - origCy, 2));
+                            
                             if (startDist > 0) {
                                 let scale = currentDist / startDist;
                                 if (dragState.handleIndex === 1 || dragState.handleIndex === 5) scale = Math.abs(pos.y - origCy) / Math.abs(dragState.startY - origCy);
                                 else if (dragState.handleIndex === 3 || dragState.handleIndex === 7) scale = Math.abs(pos.x - origCx) / Math.abs(dragState.startX - origCx);
                                 if (scale > 0.01) {
-                                    for (let i = 0; i < shape.length; i++) { shape[i].x = origCx + (dragState.origShape[i].x - origCx) * scale; shape[i].y = origCy + (dragState.origShape[i].y - origCy) * scale; }
+                                    for (let i = 0; i < shape.length; i++) { 
+                                        shape[i].x = origCx + (dragState.origShape[i].x - origCx) * scale; 
+                                        shape[i].y = origCy + (dragState.origShape[i].y - origCy) * scale; 
+                                    }
                                 }
                             }
                             applyConstraints();
                         } else if (dragState.type === 'vertex') {
-                            let p = shape[dragState.vertexIndex], rawTarget = { x: dragState.origV.x + dx, y: dragState.origV.y + dy };
+                            let p = shape[dragState.vertexIndex];
+                            let rawTarget = { x: dragState.origV.x + dx, y: dragState.origV.y + dy };
                             if (showGridCheck.checked) rawTarget = applyGridSnap(rawTarget);
                             p.x = rawTarget.x; p.y = rawTarget.y;
                             let snapHit = getHitTarget(p.x, p.y, dragState.shapeIndex);
                             if (snapHit) {
                                 let targetShape = shapes[snapHit.shapeIndex];
-                                if (snapHit.type === 'vertex') { p.x = targetShape[snapHit.vertexIndex].x; p.y = targetShape[snapHit.vertexIndex].y; p.attachedTo = { shapeId: targetShape.id, type: 'vertex', vertexIndex: snapHit.vertexIndex }; } 
-                                else if (snapHit.type === 'edge') { let p1 = targetShape[snapHit.v1], p2 = targetShape[snapHit.v2], l2 = dist2(p1, p2); let t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - p1.x)*(p2.x - p1.x) + (p.y - p1.y)*(p2.y - p1.y))/l2)) : 0; p.x = p1.x + t * (p2.x - p1.x); p.y = p1.y + t * (p2.y - p1.y); p.attachedTo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t }; } 
-                                else if (snapHit.type === 'circle_edge' || snapHit.type === 'sector_edge') { let C = targetShape[0], P1 = targetShape[1], R = Math.sqrt(dist2(C, P1)); let angle = Math.atan2(p.y - C.y, p.x - C.x); p.x = C.x + R * Math.cos(angle); p.y = C.y + R * Math.sin(angle); p.attachedTo = { shapeId: targetShape.id, type: 'circle_edge', angle }; } 
-                                else if (snapHit.type === 'midpoint') { p.x = snapHit.x; p.y = snapHit.y; p.attachedTo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t: 0.5 }; } 
-                                else if (snapHit.type === 'intersection') { p.x = snapHit.x; p.y = snapHit.y; delete p.attachedTo; }
-                            } else { delete p.attachedTo; }
+                                if (snapHit.type === 'vertex') {
+                                    p.x = targetShape[snapHit.vertexIndex].x; p.y = targetShape[snapHit.vertexIndex].y;
+                                    p.attachedTo = { shapeId: targetShape.id, type: 'vertex', vertexIndex: snapHit.vertexIndex };
+                                } else if (snapHit.type === 'edge') {
+                                    let p1 = targetShape[snapHit.v1], p2 = targetShape[snapHit.v2], l2 = dist2(p1, p2);
+                                    let t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - p1.x)*(p2.x - p1.x) + (p.y - p1.y)*(p2.y - p1.y))/l2)) : 0;
+                                    p.x = p1.x + t * (p2.x - p1.x); p.y = p1.y + t * (p2.y - p1.y);
+                                    p.attachedTo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t };
+                                } else if (snapHit.type === 'circle_edge' || snapHit.type === 'sector_edge') {
+                                    let C = targetShape[0], P1 = targetShape[1], R = Math.sqrt(dist2(C, P1));
+                                    let angle = Math.atan2(p.y - C.y, p.x - C.x);
+                                    p.x = C.x + R * Math.cos(angle); p.y = C.y + R * Math.sin(angle);
+                                    p.attachedTo = { shapeId: targetShape.id, type: 'circle_edge', angle };
+                                } else if (snapHit.type === 'midpoint') {
+                                    p.x = snapHit.x; p.y = snapHit.y;
+                                    p.attachedTo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t: 0.5 };
+                                } else if (snapHit.type === 'intersection') {
+                                    p.x = snapHit.x; p.y = snapHit.y;
+                                    delete p.attachedTo;
+                                }
+                            } else {
+                                delete p.attachedTo;
+                            }
                             applyConstraints();
                             
                             if (shape.type === 'sector') {
-                                const c = shape[0], r = Math.sqrt(dist2(c, shape[1]));
-                                if (dragState.vertexIndex === 1) { const a2 = Math.atan2(shape[2].y - c.y, shape[2].x - c.x); shape[2].x = c.x + r * Math.cos(a2); shape[2].y = c.y + r * Math.sin(a2); } 
-                                else if (dragState.vertexIndex === 2 || dragState.vertexIndex === 0) { const a2 = Math.atan2(shape[2].y - c.y, shape[2].x - c.x); shape[2].x = c.x + r * Math.cos(a2); shape[2].y = c.y + r * Math.sin(a2); }
+                                const c = shape[0];
+                                const r = Math.sqrt(dist2(c, shape[1]));
+                                if (dragState.vertexIndex === 1) {
+                                    const a2 = Math.atan2(shape[2].y - c.y, shape[2].x - c.x);
+                                    shape[2].x = c.x + r * Math.cos(a2); shape[2].y = c.y + r * Math.sin(a2);
+                                } else if (dragState.vertexIndex === 2 || dragState.vertexIndex === 0) {
+                                    const a2 = Math.atan2(shape[2].y - c.y, shape[2].x - c.x);
+                                    shape[2].x = c.x + r * Math.cos(a2); shape[2].y = c.y + r * Math.sin(a2);
+                                }
                             }
                         } else if (dragState.type === 'edge') {
                             shape[dragState.v1].x = dragState.origV1.x + dx; shape[dragState.v1].y = dragState.origV1.y + dy;
-                            shape[dragState.v2].x = dragState.origV2.x + dx; shape[dragState.v2].y = dragState.origV2.y + dy; applyConstraints();
+                            shape[dragState.v2].x = dragState.origV2.x + dx; shape[dragState.v2].y = dragState.origV2.y + dy;
+                            applyConstraints();
                         } else if (dragState.type === 'shape') {
                             let rawDx = dx; let rawDy = dy;
                             if (showGridCheck.checked && dragState.origShape.length > 0) {
-                                let firstV = dragState.origShape[0]; let targetV = applyGridSnap({x: firstV.x + dx, y: firstV.y + dy}); rawDx = targetV.x - firstV.x; rawDy = targetV.y - firstV.y;
+                                let firstV = dragState.origShape[0];
+                                let targetV = applyGridSnap({x: firstV.x + dx, y: firstV.y + dy});
+                                rawDx = targetV.x - firstV.x;
+                                rawDy = targetV.y - firstV.y;
                             }
-                            for (let i = 0; i < shape.length; i++) { shape[i].x = dragState.origShape[i].x + rawDx; shape[i].y = dragState.origShape[i].y + rawDy; } applyConstraints();
+                            for (let i = 0; i < shape.length; i++) { 
+                                shape[i].x = dragState.origShape[i].x + rawDx; shape[i].y = dragState.origShape[i].y + rawDy; 
+                            }
+                            applyConstraints();
                         }
                     }
                 }
                 draw();
             } else {
                 if (isSpaceDown) canvas.style.cursor = 'grab';
+                else if (target && target.type && target.type.endsWith('_label')) canvas.style.cursor = 'move';
                 else if (!target) canvas.style.cursor = (mode === 'draw' ? 'crosshair' : 'default');
                 else canvas.style.cursor = 'pointer';
                 draw();
@@ -1741,11 +1801,14 @@
         }
 
         function handlePointerUp(e) {
-            if (isPanning && (e.button === 1 || e.button === 0)) { isPanning = false; canvas.style.cursor = isSpaceDown ? 'grab' : (mode === 'draw' ? 'crosshair' : 'default'); return; }
+            if (isPanning && (e.button === 1 || e.button === 0)) {
+                isPanning = false; canvas.style.cursor = isSpaceDown ? 'grab' : (mode === 'draw' ? 'crosshair' : 'default'); return;
+            }
             if (e.button !== 0) return;
             
             if (dragState) {
-                let wasMoved = dragState.moved; const pos = getLogicalPos(getPointerPos(e));
+                let wasMoved = dragState.moved;
+                const pos = getLogicalPos(getPointerPos(e));
 
                 if (!wasMoved && mode === 'draw' && drawType === 'tangent') {
                     if (!tangentStartPoint) {
@@ -1754,47 +1817,82 @@
                     } else {
                         let hit = getHitTarget(pos.x, pos.y);
                         if (hit && shapes[hit.shapeIndex] && shapes[hit.shapeIndex].type === 'circle') {
-                            addTangentsFromPointToCircle(tangentStartPoint.x, tangentStartPoint.y, shapes[hit.shapeIndex]); tangentStartPoint = null;
+                            addTangentsFromPointToCircle(tangentStartPoint.x, tangentStartPoint.y, shapes[hit.shapeIndex]);
+                            tangentStartPoint = null;
                             if(instructionBanner) instructionBanner.innerHTML = "💡 <strong>접선 작도 완료.</strong> 새로운 외부 점을 클릭하거나 다른 도구를 선택하세요.";
-                        } else { showToast("원이 선택되지 않았습니다. 원을 정확히 클릭해주세요."); }
+                        } else {
+                            showToast("원이 선택되지 않았습니다. 원을 정확히 클릭해주세요.");
+                        }
                     }
                     dragState = null; draw(); return;
                 }
 
                 if (wasMoved) {
                     if (dragState.type === 'selection' && selectionBox) {
-                        const minX = Math.min(selectionBox.startX, selectionBox.endX), maxX = Math.max(selectionBox.startX, selectionBox.endX);
-                        const minY = Math.min(selectionBox.startY, selectionBox.endY), maxY = Math.max(selectionBox.startY, selectionBox.endY);
-                        if (maxX - minX >= 10 && maxY - minY >= 10) openPrintPreview(selectionBox, selectedShapeIndices.length > 0 ? selectedShapeIndices : null);
-                        else selectionBox = null;
+                        const minX = Math.min(selectionBox.startX, selectionBox.endX);
+                        const maxX = Math.max(selectionBox.startX, selectionBox.endX);
+                        const minY = Math.min(selectionBox.startY, selectionBox.endY);
+                        const maxY = Math.max(selectionBox.startY, selectionBox.endY);
+                        if (maxX - minX >= 10 && maxY - minY >= 10) {
+                            openPrintPreview(selectionBox, selectedShapeIndices.length > 0 ? selectedShapeIndices : null);
+                        } else {
+                            selectionBox = null;
+                        }
                     } else if (dragState.type !== 'selection') {
                         saveHistory();
                         if (dragState.type === 'vertex') {
                             const p = shapes[dragState.shapeIndex][dragState.vertexIndex];
-                            if (p.attachedTo) { showToast('🔗 교점으로 연결(스냅) 되었습니다'); } 
-                            else { const h = getHitTarget(p.x, p.y, dragState.shapeIndex); if (h && h.type === 'intersection') showToast('🎯 두 도형의 교차점에 스냅되었습니다'); }
+                            if (p.attachedTo) {
+                                showToast('🔗 교점으로 연결(스냅) 되었습니다');
+                            } else {
+                                const h = getHitTarget(p.x, p.y, dragState.shapeIndex);
+                                if (h && h.type === 'intersection') {
+                                    showToast('🎯 두 도형의 교차점에 스냅되었습니다');
+                                }
+                            }
                         }
                     }
                 } else {
-                    if (mode === 'draw' && drawType !== 'regular' && drawType !== 'text') {
-                        let closed = false; let pPos = { x: pos.x, y: pos.y };
+                    if (mode === 'draw' && drawType !== 'regular') {
+                        let closed = false;
+                        let pPos = { x: pos.x, y: pos.y };
 
                         if (showGridCheck.checked) pPos = applyGridSnap(pPos);
-                        if (e.shiftKey && currentShape.length > 0 && (drawType === 'polygon' || drawType === 'line')) pPos = getConstrainedPos(currentShape[currentShape.length - 1], { x: pos.x, y: pos.y });
 
-                        let snapHit = getHitTarget(pPos.x, pPos.y), snapAttachInfo = null;
+                        if (e.shiftKey && currentShape.length > 0 && (drawType === 'polygon' || drawType === 'line')) {
+                            pPos = getConstrainedPos(currentShape[currentShape.length - 1], { x: pos.x, y: pos.y });
+                        }
+
+                        let snapHit = getHitTarget(pPos.x, pPos.y);
+                        let snapAttachInfo = null;
                         if (snapHit) {
                             let targetShape = shapes[snapHit.shapeIndex];
-                            if (snapHit.type === 'vertex') { pPos.x = targetShape[snapHit.vertexIndex].x; pPos.y = targetShape[snapHit.vertexIndex].y; snapAttachInfo = { shapeId: targetShape.id, type: 'vertex', vertexIndex: snapHit.vertexIndex }; } 
-                            else if (snapHit.type === 'edge') { let p1 = targetShape[snapHit.v1], p2 = targetShape[snapHit.v2], l2 = dist2(p1, p2); let t = l2 > 0 ? Math.max(0, Math.min(1, ((pPos.x - p1.x)*(p2.x - p1.x) + (pPos.y - p1.y)*(p2.y - p1.y))/l2)) : 0; pPos.x = p1.x + t * (p2.x - p1.x); pPos.y = p1.y + t * (p2.y - p1.y); snapAttachInfo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t }; } 
-                            else if (snapHit.type === 'circle_edge' || snapHit.type === 'sector_edge') { let C = targetShape[0], P1 = targetShape[1], R = Math.sqrt(dist2(C, P1)); let angle = Math.atan2(pPos.y - C.y, pPos.x - C.x); pPos.x = C.x + R * Math.cos(angle); pPos.y = C.y + R * Math.sin(angle); snapAttachInfo = { shapeId: targetShape.id, type: 'circle_edge', angle }; } 
-                            else if (snapHit.type === 'midpoint') { pPos.x = snapHit.x; pPos.y = snapHit.y; snapAttachInfo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t: 0.5 }; } 
-                            else if (snapHit.type === 'intersection') { pPos.x = snapHit.x; pPos.y = snapHit.y; }
+                            if (snapHit.type === 'vertex') {
+                                pPos.x = targetShape[snapHit.vertexIndex].x; pPos.y = targetShape[snapHit.vertexIndex].y;
+                                snapAttachInfo = { shapeId: targetShape.id, type: 'vertex', vertexIndex: snapHit.vertexIndex };
+                            } else if (snapHit.type === 'edge') {
+                                let p1 = targetShape[snapHit.v1], p2 = targetShape[snapHit.v2], l2 = dist2(p1, p2);
+                                let t = l2 > 0 ? Math.max(0, Math.min(1, ((pPos.x - p1.x)*(p2.x - p1.x) + (pPos.y - p1.y)*(p2.y - p1.y))/l2)) : 0;
+                                pPos.x = p1.x + t * (p2.x - p1.x); pPos.y = p1.y + t * (p2.y - p1.y);
+                                snapAttachInfo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t };
+                            } else if (snapHit.type === 'circle_edge' || snapHit.type === 'sector_edge') {
+                                let C = targetShape[0], P1 = targetShape[1], R = Math.sqrt(dist2(C, P1));
+                                let angle = Math.atan2(pPos.y - C.y, pPos.x - C.x);
+                                pPos.x = C.x + R * Math.cos(angle); pPos.y = C.y + R * Math.sin(angle);
+                                snapAttachInfo = { shapeId: targetShape.id, type: 'circle_edge', angle };
+                            } else if (snapHit.type === 'midpoint') {
+                                pPos.x = snapHit.x; pPos.y = snapHit.y;
+                                snapAttachInfo = { shapeId: targetShape.id, type: 'edge', v1: snapHit.v1, v2: snapHit.v2, t: 0.5 };
+                            } else if (snapHit.type === 'intersection') {
+                                pPos.x = snapHit.x; pPos.y = snapHit.y;
+                            }
                         }
 
                         if (drawType === 'polygon' && currentShape.length > 2) {
-                            if (Math.sqrt(dist2(pos, currentShape[0])) <= closeThreshold / globalScale) {
-                                const newShape = [...currentShape]; newShape.type = 'polygon'; newShape.id = generateId(); shapes.push(newShape); currentShape = []; applyConstraints(); saveHistory(); closed = true;
+                            const startPoint = currentShape[0];
+                            if (Math.sqrt(dist2(pos, startPoint)) <= closeThreshold / globalScale) {
+                                const newShape = [...currentShape]; newShape.type = 'polygon'; newShape.id = generateId();
+                                shapes.push(newShape); currentShape = []; applyConstraints(); saveHistory(); closed = true;
                             }
                         }
                         
@@ -1802,11 +1900,23 @@
                             let labelStr = getAlphabetLabel(globalVertexCount++);
                             if (drawType === 'circle' && currentShape.length === 0) labelStr = 'O';
 
-                            let newPt = { x: pPos.x, y: pPos.y, showAngle: defaultAngleCheck.checked, showLength: defaultLengthCheck.checked, label: labelStr };
-                            if (snapAttachInfo) newPt.attachedTo = snapAttachInfo; currentShape.push(newPt);
+                            let newPt = {
+                                x: pPos.x, y: pPos.y, 
+                                showAngle: defaultAngleCheck.checked, 
+                                showLength: defaultLengthCheck.checked, 
+                                label: labelStr 
+                            };
+                            if (snapAttachInfo) newPt.attachedTo = snapAttachInfo;
+
+                            currentShape.push(newPt);
                             
-                            if (drawType === 'line' && currentShape.length === 2) { const newShape = [...currentShape]; newShape.type = 'line'; newShape.id = generateId(); shapes.push(newShape); currentShape = []; } 
-                            else if (drawType === 'circle' && currentShape.length === 2) { const newShape = [...currentShape]; newShape.type = 'circle'; newShape.id = generateId(); shapes.push(newShape); currentShape = []; }
+                            if (drawType === 'line' && currentShape.length === 2) { 
+                                const newShape = [...currentShape]; newShape.type = 'line'; newShape.id = generateId(); 
+                                shapes.push(newShape); currentShape = []; 
+                            } else if (drawType === 'circle' && currentShape.length === 2) { 
+                                const newShape = [...currentShape]; newShape.type = 'circle'; newShape.id = generateId(); 
+                                shapes.push(newShape); currentShape = []; 
+                            }
                             applyConstraints(); saveHistory();
                         }
                     }
@@ -1817,7 +1927,9 @@
 
         function handleContextMenu(e) {
             e.preventDefault(); if (isPanning) return; 
-            const physicalPos = getPointerPos(e); const pos = getLogicalPos(physicalPos); const target = getHitTarget(pos.x, pos.y);
+            const physicalPos = getPointerPos(e);
+            const pos = getLogicalPos(physicalPos);
+            const target = getHitTarget(pos.x, pos.y);
 
             if (target) {
                 const hitGroupIndices = getGroupIndices(target.shapeIndex);
@@ -1832,6 +1944,7 @@
                 printItem.onclick = () => { printSelectedShapes(); contextMenu.classList.add('hidden'); };
                 contextMenu.appendChild(printItem);
 
+                
                 if (target.type === 'vertex') {
                     const p = shapes[target.shapeIndex][target.vertexIndex];
                     if (p.attachedTo) {
@@ -1844,7 +1957,7 @@
                 }
                 
                 if (target.type === 'shape' || target.type === 'edge') {
-                    const hasConstraints = shapes[target.shapeIndex] && shapes[target.shapeIndex].type !== 'text' && shapes[target.shapeIndex].some(p => p.attachedTo);
+                    const hasConstraints = shapes[target.shapeIndex].some(p => p.attachedTo);
                     if (hasConstraints) {
                         const detachAllBtn = document.createElement('button');
                         detachAllBtn.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs';
@@ -1855,14 +1968,33 @@
                 }
 
                 if (target.type === 'edge') {
-                    const parallelBtn = document.createElement('button'); parallelBtn.className = 'w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs'; parallelBtn.innerHTML = '<span>∥</span> 이 선분과 평행선 생성'; parallelBtn.onclick = () => { createParallelLine(target.shapeIndex, target.v1, target.v2); contextMenu.classList.add('hidden'); }; contextMenu.appendChild(parallelBtn);
-                    const perpBtn = document.createElement('button'); perpBtn.className = 'w-full text-left px-4 py-2 hover:bg-purple-50 text-purple-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs'; perpBtn.innerHTML = '<span>⟂</span> 이 선분에 수직선 생성'; perpBtn.onclick = () => { createPerpendicularLine(target.shapeIndex, target.v1, target.v2); contextMenu.classList.add('hidden'); }; contextMenu.appendChild(perpBtn);
+                    const parallelBtn = document.createElement('button');
+                    parallelBtn.className = 'w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs';
+                    parallelBtn.innerHTML = '<span>∥</span> 이 선분과 평행선 생성';
+                    parallelBtn.onclick = () => { createParallelLine(target.shapeIndex, target.v1, target.v2); contextMenu.classList.add('hidden'); };
+                    contextMenu.appendChild(parallelBtn);
+
+                    const perpBtn = document.createElement('button');
+                    perpBtn.className = 'w-full text-left px-4 py-2 hover:bg-purple-50 text-purple-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs';
+                    perpBtn.innerHTML = '<span>⟂</span> 이 선분에 수직선 생성';
+                    perpBtn.onclick = () => { createPerpendicularLine(target.shapeIndex, target.v1, target.v2); contextMenu.classList.add('hidden'); };
+                    contextMenu.appendChild(perpBtn);
                 } else if (target.type === 'vertex' && shapes[target.shapeIndex].type === 'polygon' && shapes[target.shapeIndex].length >= 3) {
-                    const bisectBtn = document.createElement('button'); bisectBtn.className = 'w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs'; bisectBtn.innerHTML = '<span>📐</span> 내각의 이등분선 생성'; bisectBtn.onclick = () => { createAngleBisector(target.shapeIndex, target.vertexIndex); contextMenu.classList.add('hidden'); }; contextMenu.appendChild(bisectBtn);
+                    const bisectBtn = document.createElement('button');
+                    bisectBtn.className = 'w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-700 flex items-center gap-2 font-semibold border-b border-gray-100 text-xs';
+                    bisectBtn.innerHTML = '<span>📐</span> 내각의 이등분선 생성';
+                    bisectBtn.onclick = () => { createAngleBisector(target.shapeIndex, target.vertexIndex); contextMenu.classList.add('hidden'); };
+                    contextMenu.appendChild(bisectBtn);
                 }
 
-                const deleteBtn = document.createElement('button'); deleteBtn.className = 'w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 mt-1 font-semibold'; deleteBtn.innerHTML = '<span>🗑️</span> 삭제'; deleteBtn.onclick = () => { deleteSelectedShapes(); contextMenu.classList.add('hidden'); }; contextMenu.appendChild(deleteBtn);
-                contextMenu.style.left = e.clientX + 'px'; contextMenu.style.top = e.clientY + 'px'; contextMenu.classList.remove('hidden');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 mt-1 font-semibold';
+                deleteBtn.innerHTML = '<span>🗑️</span> 삭제';
+                deleteBtn.onclick = () => { deleteSelectedShapes(); contextMenu.classList.add('hidden'); };
+                contextMenu.appendChild(deleteBtn);
+
+                contextMenu.style.left = e.clientX + 'px'; contextMenu.style.top = e.clientY + 'px';
+                contextMenu.classList.remove('hidden');
             } else { contextMenu.classList.add('hidden'); }
         }
 
@@ -1872,52 +2004,97 @@
             const w = maxX - minX, h = maxY - minY;
             if (w < 5 || h < 5) return;
 
-            const resolvedIndices = (targetIndices && targetIndices.length > 0) ? [...targetIndices] : shapes.map((_, i) => i);
-            lastExportContext = { indices: resolvedIndices, bounds: { minX, minY, maxX, maxY, w, h } };
+            const resolvedIndices = (targetIndices && targetIndices.length > 0)
+                ? [...targetIndices]
+                : shapes.map((_, i) => i);
+
+            lastExportContext = {
+                indices: resolvedIndices,
+                bounds: { minX, minY, maxX, maxY, w, h }
+            };
 
             draw(true, targetIndices);
             const screenMinX = (minX * globalScale) + originX, screenMinY = (minY * globalScale) + originY;
             const screenW = w * globalScale, screenH = h * globalScale, dpr = window.devicePixelRatio || 1;
 
             const cropCanvas = document.createElement('canvas');
-            cropCanvas.width = Math.max(1, Math.round(screenW * dpr)); cropCanvas.height = Math.max(1, Math.round(screenH * dpr));
-            const cropCtx = cropCanvas.getContext('2d'); cropCtx.fillStyle = '#ffffff'; cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+            cropCanvas.width = Math.max(1, Math.round(screenW * dpr));
+            cropCanvas.height = Math.max(1, Math.round(screenH * dpr));
+            const cropCtx = cropCanvas.getContext('2d');
+            cropCtx.fillStyle = '#ffffff';
+            cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
 
-            const srcX = Math.max(0, screenMinX * dpr), srcY = Math.max(0, screenMinY * dpr), srcRight = Math.min(canvas.width, (screenMinX + screenW) * dpr), srcBottom = Math.min(canvas.height, (screenMinY + screenH) * dpr);
-            const copyW = srcRight - srcX, copyH = srcBottom - srcY;
+            const srcX = Math.max(0, screenMinX * dpr);
+            const srcY = Math.max(0, screenMinY * dpr);
+            const srcRight = Math.min(canvas.width, (screenMinX + screenW) * dpr);
+            const srcBottom = Math.min(canvas.height, (screenMinY + screenH) * dpr);
+            const copyW = srcRight - srcX;
+            const copyH = srcBottom - srcY;
 
             if (copyW > 0 && copyH > 0) {
-                const dstX = srcX - screenMinX * dpr, dstY = srcY - screenMinY * dpr;
+                const dstX = srcX - screenMinX * dpr;
+                const dstY = srcY - screenMinY * dpr;
                 cropCtx.drawImage(canvas, srcX, srcY, copyW, copyH, dstX, dstY, copyW, copyH);
             }
 
-            printPreviewImg.src = cropCanvas.toDataURL('image/png'); printModal.classList.remove('hidden'); draw(false);
+            printPreviewImg.src = cropCanvas.toDataURL('image/png');
+            printModal.classList.remove('hidden');
+            draw(false);
         }
 
         function openPrintPreview(boxOrBounds = null, targetIndices = null) {
             if (boxOrBounds && boxOrBounds.startX !== undefined) {
-                const minX = Math.min(boxOrBounds.startX, boxOrBounds.endX), maxX = Math.max(boxOrBounds.startX, boxOrBounds.endX);
-                const minY = Math.min(boxOrBounds.startY, boxOrBounds.endY), maxY = Math.max(boxOrBounds.startY, boxOrBounds.endY);
+                const minX = Math.min(boxOrBounds.startX, boxOrBounds.endX);
+                const maxX = Math.max(boxOrBounds.startX, boxOrBounds.endX);
+                const minY = Math.min(boxOrBounds.startY, boxOrBounds.endY);
+                const maxY = Math.max(boxOrBounds.startY, boxOrBounds.endY);
                 if (maxX - minX < 10 || maxY - minY < 10) return;
-                renderBoundsToPreview({ minX, minY, maxX, maxY }, targetIndices); return;
+                renderBoundsToPreview({ minX, minY, maxX, maxY }, targetIndices);
+                return;
             }
-            if (boxOrBounds && boxOrBounds.minX !== undefined) { renderBoundsToPreview(boxOrBounds, targetIndices); return; }
-            if (selectedShapeIndices.length > 0) { const bounds = getMultipleShapesBounds(selectedShapeIndices); if (bounds) renderBoundsToPreview(bounds, selectedShapeIndices); return; }
-            if (shapes.length > 0) { const allIndices = shapes.map((_, i) => i); const bounds = getMultipleShapesBounds(allIndices); if (bounds) renderBoundsToPreview(bounds, allIndices); return; }
+            if (boxOrBounds && boxOrBounds.minX !== undefined) {
+                renderBoundsToPreview(boxOrBounds, targetIndices);
+                return;
+            }
+            if (selectedShapeIndices.length > 0) {
+                const bounds = getMultipleShapesBounds(selectedShapeIndices);
+                if (bounds) renderBoundsToPreview(bounds, selectedShapeIndices);
+                return;
+            }
+            if (shapes.length > 0) {
+                const allIndices = shapes.map((_, i) => i);
+                const bounds = getMultipleShapesBounds(allIndices);
+                if (bounds) renderBoundsToPreview(bounds, allIndices);
+                return;
+            }
             showToast('⚠️ 캡처할 도형이 없습니다.');
+        }
+
+        function openPrintPreviewFromBox(box) {
+            openPrintPreview(box, null);
         }
 
         function printSelectedShapes() {
             if (selectedShapeIndices.length === 0) {
                 if (shapes.length === 0) return showToast('⚠️ 인쇄할 도형을 먼저 그리거나 선택해주세요.');
-                openPrintPreview(); return;
+                openPrintPreview();
+                return;
             }
-            const bounds = getMultipleShapesBounds(selectedShapeIndices); if (!bounds) return; openPrintPreview(bounds, selectedShapeIndices);
+            const bounds = getMultipleShapesBounds(selectedShapeIndices);
+            if (!bounds) return;
+            openPrintPreview(bounds, selectedShapeIndices);
         }
 
-        function closePrintPreviewModal() { printModal.classList.add('hidden'); selectionBox = null; selectedShapeIndices = []; updatePanels(null); setMode('draw'); draw(); }
+        function closePrintPreviewModal() {
+            printModal.classList.add('hidden');
+            selectionBox = null;
+            selectedShapeIndices = [];
+            updatePanels(null);
+            setMode('draw');
+            draw();
+        }
 
-        // --- SVG / PNG / PDF 내보내기 ---
+        // --- SVG / PNG / PDF 내보내기 구현 ---
         function generateSVGString() {
             const { indices, bounds } = lastExportContext;
             if (!bounds) return '';
@@ -1931,54 +2108,57 @@
             ];
 
             indices.forEach(sIdx => {
-                const shape = shapes[sIdx]; if (!shape || shape.length === 0) return;
+                const shape = shapes[sIdx];
+                if (!shape || shape.length === 0) return;
                 const shapeType = shape.type || 'polygon';
-
-                if (shapeType === 'text') {
-                    const txt = shape.text || '텍스트'; const fSize = shape.fontSize || 24; const tCol = shape.textColor || '#000000';
-                    svgParts.push(`<text x="${shape[0].x.toFixed(2)}" y="${shape[0].y.toFixed(2)}" fill="${tCol}" font-family="sans-serif" font-size="${fSize}" text-anchor="start" dominant-baseline="hanging">${escapeXml(txt)}</text>`);
-                    return;
-                }
-
-                const strokeColor = shape.strokeColor || '#4f46e5';
-                const strokeWidth = shape.strokeWidth || 2.5;
-                const fillColor = hexToRgba(shape.fillColor || '#4f46e5', shape.fillOpacity !== undefined ? shape.fillOpacity : 0.05);
-                const lineStyle = shape.lineStyle || 'solid';
-                
-                let dashAttr = '';
-                if (lineStyle === 'dashed') dashAttr = ' stroke-dasharray="8,8"';
-                else if (lineStyle === 'dashdot') dashAttr = ' stroke-dasharray="12,6,4,6"';
 
                 if (shapeType === 'polygon') {
                     const pts = shape.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
-                    svgParts.push(`<polygon points="${pts}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} stroke-linejoin="round"/>`);
+                    svgParts.push(`<polygon points="${pts}" fill="rgba(79,70,229,0.05)" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>`);
                 } else if (shapeType === 'circle') {
                     const c = shape[0], p = shape[1], r = Math.sqrt(dist2(c, p));
-                    svgParts.push(`<circle cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr}/>`);
+                    svgParts.push(`<circle cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="rgba(79,70,229,0.05)" stroke="#4f46e5" stroke-width="2.5"/>`);
                     if (c.showLength !== false) {
-                        svgParts.push(`<line x1="${c.x.toFixed(2)}" y1="${c.y.toFixed(2)}" x2="${p.x.toFixed(2)}" y2="${p.y.toFixed(2)}" stroke="${strokeColor}" stroke-width="1.8" stroke-dasharray="4,4"/>`);
-                        const rCm = (r / 50).toFixed(1) + ' cm', txt = c.customLength ? c.customLength : `r = ${rCm}`;
-                        const angle = Math.atan2(p.y - c.y, p.x - c.x), mx = (c.x + p.x) / 2 + Math.cos(angle + Math.PI / 2) * 14, my = (c.y + p.y) / 2 + Math.sin(angle + Math.PI / 2) * 14;
-                        svgParts.push(`<text x="${mx.toFixed(2)}" y="${my.toFixed(2)}" fill="${strokeColor}" font-family="sans-serif" font-size="13" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(txt)}</text>`);
+                        svgParts.push(`<line x1="${c.x.toFixed(2)}" y1="${c.y.toFixed(2)}" x2="${p.x.toFixed(2)}" y2="${p.y.toFixed(2)}" stroke="#4f46e5" stroke-width="1.8" stroke-dasharray="4,4"/>`);
+                        const rCm = (r / 50).toFixed(1) + ' cm';
+                        const txt = c.customLength ? c.customLength : `r = ${rCm}`;
+                        const angle = Math.atan2(p.y - c.y, p.x - c.x);
+                        let fOffX = c.lengthOffset ? c.lengthOffset.x : 0; let fOffY = c.lengthOffset ? c.lengthOffset.y : 0;
+                        const mx = (c.x + p.x) / 2 + Math.cos(angle + Math.PI / 2) * 14 + fOffX;
+                        const my = (c.y + p.y) / 2 + Math.sin(angle + Math.PI / 2) * 14 + fOffY;
+                        svgParts.push(`<text x="${mx.toFixed(2)}" y="${my.toFixed(2)}" fill="#4f46e5" font-family="sans-serif" font-size="13" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(txt)}</text>`);
                     }
                 } else if (shapeType === 'sector') {
-                    const c = shape[0], p1 = shape[1], p2 = shape[2], r = Math.sqrt(dist2(c, p1)), a1 = Math.atan2(p1.y - c.y, p1.x - c.x), a2 = Math.atan2(p2.y - c.y, p2.x - c.x);
-                    let diff = a2 - a1; while (diff < 0) diff += Math.PI * 2; const largeArc = diff > Math.PI ? 1 : 0;
-                    svgParts.push(`<path d="M ${c.x.toFixed(2)} ${c.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r.toFixed(2)} ${r.toFixed(2)} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} Z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} stroke-linejoin="round"/>`);
+                    const c = shape[0], p1 = shape[1], p2 = shape[2];
+                    const r = Math.sqrt(dist2(c, p1));
+                    const a1 = Math.atan2(p1.y - c.y, p1.x - c.x);
+                    const a2 = Math.atan2(p2.y - c.y, p2.x - c.x);
+                    let diff = a2 - a1; while (diff < 0) diff += Math.PI * 2;
+                    const largeArc = diff > Math.PI ? 1 : 0;
+
+                    svgParts.push(`<path d="M ${c.x.toFixed(2)} ${c.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r.toFixed(2)} ${r.toFixed(2)} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} Z" fill="rgba(79,70,229,0.05)" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>`);
+                    
                     if (c.showLength !== false) {
-                        svgParts.push(`<line x1="${c.x.toFixed(2)}" y1="${c.y.toFixed(2)}" x2="${p1.x.toFixed(2)}" y2="${p1.y.toFixed(2)}" stroke="${strokeColor}" stroke-width="1.8" stroke-dasharray="4,4"/>`);
-                        const rCm = (r / 50).toFixed(1) + ' cm', txt = c.customLength ? c.customLength : `r = ${rCm}`;
-                        const mx = (c.x + p1.x) / 2 + Math.cos(a1 + Math.PI / 2) * 14, my = (c.y + p1.y) / 2 + Math.sin(a1 + Math.PI / 2) * 14;
-                        svgParts.push(`<text x="${mx.toFixed(2)}" y="${my.toFixed(2)}" fill="${strokeColor}" font-family="sans-serif" font-size="13" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(txt)}</text>`);
+                        svgParts.push(`<line x1="${c.x.toFixed(2)}" y1="${c.y.toFixed(2)}" x2="${p1.x.toFixed(2)}" y2="${p1.y.toFixed(2)}" stroke="#4f46e5" stroke-width="1.8" stroke-dasharray="4,4"/>`);
+                        const rCm = (r / 50).toFixed(1) + ' cm';
+                        const txt = c.customLength ? c.customLength : `r = ${rCm}`;
+                        let fOffX = c.lengthOffset ? c.lengthOffset.x : 0; let fOffY = c.lengthOffset ? c.lengthOffset.y : 0;
+                        const mx = (c.x + p1.x) / 2 + Math.cos(a1 + Math.PI / 2) * 14 + fOffX;
+                        const my = (c.y + p1.y) / 2 + Math.sin(a1 + Math.PI / 2) * 14 + fOffY;
+                        svgParts.push(`<text x="${mx.toFixed(2)}" y="${my.toFixed(2)}" fill="#4f46e5" font-family="sans-serif" font-size="13" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(txt)}</text>`);
                     }
                     if (c.showAngle !== false) {
-                        const rArc = 22, sx = c.x + rArc * Math.cos(a1), sy = c.y + rArc * Math.sin(a1), ex = c.x + rArc * Math.cos(a2), ey = c.y + rArc * Math.sin(a2);
+                        const rArc = 22;
+                        const sx = c.x + rArc * Math.cos(a1), sy = c.y + rArc * Math.sin(a1);
+                        const ex = c.x + rArc * Math.cos(a2), ey = c.y + rArc * Math.sin(a2);
                         svgParts.push(`<path d="M ${c.x.toFixed(2)} ${c.y.toFixed(2)} L ${sx.toFixed(2)} ${sy.toFixed(2)} A ${rArc} ${rArc} 0 ${largeArc} 1 ${ex.toFixed(2)} ${ey.toFixed(2)} Z" fill="rgba(245,158,11,0.2)" stroke="rgba(245,158,11,0.8)" stroke-width="2"/>`);
-                        const degStr = c.customAngle ? c.customAngle : ((diff * 180 / Math.PI).toFixed(0) + '°'), midAngle = a1 + diff / 2, tx = c.x + Math.cos(midAngle) * 36, ty = c.y + Math.sin(midAngle) * 36;
+                        const degStr = c.customAngle ? c.customAngle : ((diff * 180 / Math.PI).toFixed(0) + '°');
+                        const midAngle = a1 + diff / 2;
+                        const tx = c.x + Math.cos(midAngle) * 36, ty = c.y + Math.sin(midAngle) * 36;
                         svgParts.push(`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="#1f2937" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${escapeXml(degStr)}</text>`);
                     }
                 } else if (shapeType === 'line') {
-                    svgParts.push(`<line x1="${shape[0].x.toFixed(2)}" y1="${shape[0].y.toFixed(2)}" x2="${shape[1].x.toFixed(2)}" y2="${shape[1].y.toFixed(2)}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} stroke-linecap="round"/>`);
+                    svgParts.push(`<line x1="${shape[0].x.toFixed(2)}" y1="${shape[0].y.toFixed(2)}" x2="${shape[1].x.toFixed(2)}" y2="${shape[1].y.toFixed(2)}" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>`);
                 }
 
                 if (shapeType === 'polygon' || shapeType === 'line') {
@@ -1987,37 +2167,56 @@
                     else edges.push([0, 1]);
 
                     edges.forEach(([v1, v2]) => {
-                        const p1 = shape[v1], p2 = shape[v2], dx = p2.x - p1.x, dy = p2.y - p1.y, lengthPx = Math.sqrt(dx * dx + dy * dy);
+                        const p1 = shape[v1], p2 = shape[v2];
+                        const dx = p2.x - p1.x, dy = p2.y - p1.y;
+                        const lengthPx = Math.sqrt(dx * dx + dy * dy);
                         let isCW = (shape.length >= 3 && shapeType === 'polygon') ? (getPolygonArea(shape) > 0) : true;
-                        let nx = isCW ? dy : -dy, ny = isCW ? -dx : dx, nLen = Math.sqrt(nx * nx + ny * ny);
+                        let nx = isCW ? dy : -dy, ny = isCW ? -dx : dx;
+                        let nLen = Math.sqrt(nx * nx + ny * ny);
                         if (nLen > 0) { nx /= nLen; ny /= nLen; } else { nx = 0; ny = -1; }
                         const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
 
                         if (p1.edgeDeco) {
-                            const dirX = dx / lengthPx, dirY = dy / lengthPx, hatchLen = 12, hatchSpacing = 6;
+                            const dirX = dx / lengthPx, dirY = dy / lengthPx;
+                            const hatchLen = 12;
+                            const hatchSpacing = 6;
+                            
                             if (p1.edgeDeco === 'hatch1') {
-                                const h1x = midX - dirX * hatchLen/2 - dirY * hatchLen/2, h1y = midY - dirY * hatchLen/2 + dirX * hatchLen/2; const h2x = midX + dirX * hatchLen/2 + dirY * hatchLen/2, h2y = midY + dirY * hatchLen/2 - dirX * hatchLen/2;
-                                svgParts.push(`<line x1="${h1x.toFixed(2)}" y1="${h1y.toFixed(2)}" x2="${h2x.toFixed(2)}" y2="${h2y.toFixed(2)}" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round"/>`);
+                                const h1x = midX - dirX * hatchLen/2 - dirY * hatchLen/2, h1y = midY - dirY * hatchLen/2 + dirX * hatchLen/2;
+                                const h2x = midX + dirX * hatchLen/2 + dirY * hatchLen/2, h2y = midY + dirY * hatchLen/2 - dirX * hatchLen/2;
+                                svgParts.push(`<line x1="${h1x.toFixed(2)}" y1="${h1y.toFixed(2)}" x2="${h2x.toFixed(2)}" y2="${h2y.toFixed(2)}" stroke="#4338ca" stroke-width="2" stroke-linecap="round"/>`);
                             } else if (p1.edgeDeco === 'hatch2') {
                                 const mx1 = midX - dirX * hatchSpacing/2, my1 = midY - dirY * hatchSpacing/2;
-                                const h1x = mx1 - dirX * hatchLen/2 - dirY * hatchLen/2, h1y = my1 - dirY * hatchLen/2 + dirX * hatchLen/2; const h2x = mx1 + dirX * hatchLen/2 + dirY * hatchLen/2, h2y = my1 + dirY * hatchLen/2 - dirX * hatchLen/2;
-                                svgParts.push(`<line x1="${h1x.toFixed(2)}" y1="${h1y.toFixed(2)}" x2="${h2x.toFixed(2)}" y2="${h2y.toFixed(2)}" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round"/>`);
+                                const h1x = mx1 - dirX * hatchLen/2 - dirY * hatchLen/2, h1y = my1 - dirY * hatchLen/2 + dirX * hatchLen/2;
+                                const h2x = mx1 + dirX * hatchLen/2 + dirY * hatchLen/2, h2y = my1 + dirY * hatchLen/2 - dirX * hatchLen/2;
+                                svgParts.push(`<line x1="${h1x.toFixed(2)}" y1="${h1y.toFixed(2)}" x2="${h2x.toFixed(2)}" y2="${h2y.toFixed(2)}" stroke="#4338ca" stroke-width="2" stroke-linecap="round"/>`);
+                                
                                 const mx2 = midX + dirX * hatchSpacing/2, my2 = midY + dirY * hatchSpacing/2;
-                                const h3x = mx2 - dirX * hatchLen/2 - dirY * hatchLen/2, h3y = my2 - dirY * hatchLen/2 + dirX * hatchLen/2; const h4x = mx2 + dirX * hatchLen/2 + dirY * hatchLen/2, h4y = my2 + dirY * hatchLen/2 - dirX * hatchLen/2;
-                                svgParts.push(`<line x1="${h3x.toFixed(2)}" y1="${h3y.toFixed(2)}" x2="${h4x.toFixed(2)}" y2="${h4y.toFixed(2)}" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round"/>`);
+                                const h3x = mx2 - dirX * hatchLen/2 - dirY * hatchLen/2, h3y = my2 - dirY * hatchLen/2 + dirX * hatchLen/2;
+                                const h4x = mx2 + dirX * hatchLen/2 + dirY * hatchLen/2, h4y = my2 + dirY * hatchLen/2 - dirX * hatchLen/2;
+                                svgParts.push(`<line x1="${h3x.toFixed(2)}" y1="${h3y.toFixed(2)}" x2="${h4x.toFixed(2)}" y2="${h4y.toFixed(2)}" stroke="#4338ca" stroke-width="2" stroke-linecap="round"/>`);
                             } else if (p1.edgeDeco === 'arrow1') {
-                                const a1x = midX - dirX * hatchLen + dirY * hatchLen, a1y = midY - dirY * hatchLen - dirX * hatchLen; const a2x = midX - dirX * hatchLen - dirY * hatchLen, a2y = midY - dirY * hatchLen + dirX * hatchLen;
-                                svgParts.push(`<polyline points="${a1x.toFixed(2)},${a1y.toFixed(2)} ${midX.toFixed(2)},${midY.toFixed(2)} ${a2x.toFixed(2)},${a2y.toFixed(2)}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+                                const a1x = midX - dirX * hatchLen + dirY * hatchLen, a1y = midY - dirY * hatchLen - dirX * hatchLen;
+                                const a2x = midX - dirX * hatchLen - dirY * hatchLen, a2y = midY - dirY * hatchLen + dirX * hatchLen;
+                                svgParts.push(`<polyline points="${a1x.toFixed(2)},${a1y.toFixed(2)} ${midX.toFixed(2)},${midY.toFixed(2)} ${a2x.toFixed(2)},${a2y.toFixed(2)}" fill="none" stroke="#4338ca" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
                             } else if (p1.edgeDeco === 'arrow2') {
-                                const mx1 = midX - dirX * hatchSpacing, my1 = midY - dirY * hatchSpacing; const a1x = mx1 - dirX * hatchLen + dirY * hatchLen, a1y = my1 - dirY * hatchLen - dirX * hatchLen; const a2x = mx1 - dirX * hatchLen - dirY * hatchLen, a2y = my1 - dirY * hatchLen + dirX * hatchLen;
-                                svgParts.push(`<polyline points="${a1x.toFixed(2)},${a1y.toFixed(2)} ${mx1.toFixed(2)},${my1.toFixed(2)} ${a2x.toFixed(2)},${a2y.toFixed(2)}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
-                                const mx2 = midX + dirX * hatchSpacing, my2 = midY + dirY * hatchSpacing; const a3x = mx2 - dirX * hatchLen + dirY * hatchLen, a3y = my2 - dirY * hatchLen - dirX * hatchLen; const a4x = mx2 - dirX * hatchLen - dirY * hatchLen, a4y = my2 - dirY * hatchLen + dirX * hatchLen;
-                                svgParts.push(`<polyline points="${a3x.toFixed(2)},${a3y.toFixed(2)} ${mx2.toFixed(2)},${my2.toFixed(2)} ${a4x.toFixed(2)},${a4y.toFixed(2)}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+                                const mx1 = midX - dirX * hatchSpacing, my1 = midY - dirY * hatchSpacing;
+                                const a1x = mx1 - dirX * hatchLen + dirY * hatchLen, a1y = my1 - dirY * hatchLen - dirX * hatchLen;
+                                const a2x = mx1 - dirX * hatchLen - dirY * hatchLen, a2y = my1 - dirY * hatchLen + dirX * hatchLen;
+                                svgParts.push(`<polyline points="${a1x.toFixed(2)},${a1y.toFixed(2)} ${mx1.toFixed(2)},${my1.toFixed(2)} ${a2x.toFixed(2)},${a2y.toFixed(2)}" fill="none" stroke="#4338ca" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+                                
+                                const mx2 = midX + dirX * hatchSpacing, my2 = midY + dirY * hatchSpacing;
+                                const a3x = mx2 - dirX * hatchLen + dirY * hatchLen, a3y = my2 - dirY * hatchLen - dirX * hatchLen;
+                                const a4x = mx2 - dirX * hatchLen - dirY * hatchLen, a4y = my2 - dirY * hatchLen + dirX * hatchLen;
+                                svgParts.push(`<polyline points="${a3x.toFixed(2)},${a3y.toFixed(2)} ${mx2.toFixed(2)},${my2.toFixed(2)} ${a4x.toFixed(2)},${a4y.toFixed(2)}" fill="none" stroke="#4338ca" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
                             }
                         }
 
                         if (p1.showLength !== false) {
-                            const lenStr = p1.customLength ? p1.customLength : ((lengthPx / 50).toFixed(1) + ' cm'), cx = midX + nx * 25, cy = midY + ny * 25, tx = midX + nx * 37, ty = midY + ny * 37;
+                            const lenStr = p1.customLength ? p1.customLength : ((lengthPx / 50).toFixed(1) + ' cm');
+                            const cx = midX + nx * 25, cy = midY + ny * 25;
+                            let fOffX = p1.lengthOffset ? p1.lengthOffset.x : 0; let fOffY = p1.lengthOffset ? p1.lengthOffset.y : 0;
+                            const tx = midX + nx * 37 + fOffX, ty = midY + ny * 37 + fOffY;
                             svgParts.push(`<path d="M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4,4"/>`);
                             svgParts.push(`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="#1f2937" font-family="sans-serif" font-size="13" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(lenStr)}</text>`);
                         }
@@ -2030,18 +2229,31 @@
                         if (!p2.showAngle) return;
                         const p1 = shape[(i - 1 + shape.length) % shape.length], p3 = shape[(i + 1) % shape.length];
                         let a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x), a2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
-                        let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI; let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW; if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
+                        let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
+                        let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW;
+                        if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
 
                         const degNumeric = Math.round(interiorAngle * 180 / Math.PI);
                         if (degNumeric === 90) {
-                            const rRight = 16, px1 = p2.x + rRight * Math.cos(a1), py1 = p2.y + rRight * Math.sin(a1), px2 = p2.x + rRight * Math.cos(a2), py2 = p2.y + rRight * Math.sin(a2), cx = p2.x + rRight * Math.cos(a1) + rRight * Math.cos(a2), cy = p2.y + rRight * Math.sin(a1) + rRight * Math.sin(a2);
+                            const rRight = 16;
+                            const px1 = p2.x + rRight * Math.cos(a1), py1 = p2.y + rRight * Math.sin(a1);
+                            const px2 = p2.x + rRight * Math.cos(a2), py2 = p2.y + rRight * Math.sin(a2);
+                            const cx = p2.x + rRight * Math.cos(a1) + rRight * Math.cos(a2);
+                            const cy = p2.y + rRight * Math.sin(a1) + rRight * Math.sin(a2);
                             svgParts.push(`<polygon points="${px1.toFixed(2)},${py1.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} ${px2.toFixed(2)},${py2.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}" fill="rgba(245,158,11,0.2)" stroke="rgba(245,158,11,0.8)" stroke-width="2"/>`);
                         } else {
-                            const rArc = 22, sx = p2.x + rArc * Math.cos(a1), sy = p2.y + rArc * Math.sin(a1), ex = p2.x + rArc * Math.cos(a2), ey = p2.y + rArc * Math.sin(a2), largeArc = interiorAngle > Math.PI ? 1 : 0, sweep = isCW ? 0 : 1;
+                            const rArc = 22;
+                            const sx = p2.x + rArc * Math.cos(a1), sy = p2.y + rArc * Math.sin(a1);
+                            const ex = p2.x + rArc * Math.cos(a2), ey = p2.y + rArc * Math.sin(a2);
+                            const largeArc = interiorAngle > Math.PI ? 1 : 0;
+                            const sweep = isCW ? 0 : 1;
                             svgParts.push(`<path d="M ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} L ${sx.toFixed(2)} ${sy.toFixed(2)} A ${rArc} ${rArc} 0 ${largeArc} ${sweep} ${ex.toFixed(2)} ${ey.toFixed(2)} Z" fill="rgba(245,158,11,0.2)" stroke="rgba(245,158,11,0.8)" stroke-width="2"/>`);
                         }
 
-                        const degStr = p2.customAngle ? p2.customAngle : (degNumeric + '°'), midAngle = isCW ? (a1 - interiorAngle / 2) : (a1 + interiorAngle / 2), tx = p2.x + Math.cos(midAngle) * 36, ty = p2.y + Math.sin(midAngle) * 36;
+                        const degStr = p2.customAngle ? p2.customAngle : (degNumeric + '°');
+                        const midAngle = isCW ? (a1 - interiorAngle / 2) : (a1 + interiorAngle / 2);
+                        let aOffX = p2.angleOffset ? p2.angleOffset.x : 0; let aOffY = p2.angleOffset ? p2.angleOffset.y : 0;
+                        const tx = p2.x + Math.cos(midAngle) * 36 + aOffX, ty = p2.y + Math.sin(midAngle) * 36 + aOffY;
                         svgParts.push(`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="#1f2937" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${escapeXml(degStr)}</text>`);
                     });
                 }
@@ -2049,59 +2261,106 @@
                 const centroid = (shapeType === 'polygon' && shape.length >= 3) ? getPolygonCentroid(shape) : null;
                 shape.forEach((p, vIdx) => {
                     const isCircleCenter = ((shapeType === 'circle' || shapeType === 'sector') && vIdx === 0);
-                    if (isCircleCenter) { svgParts.push(`<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="${pointRadius}" fill="#000000" stroke="#ffffff" stroke-width="1.5"/>`); }
+                    if (isCircleCenter) {
+                        svgParts.push(`<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="${pointRadius}" fill="#000000" stroke="#ffffff" stroke-width="1.5"/>`);
+                    }
                     if (p.label) {
                         let lx = p.x + 12, ly = p.y - 10;
                         if (isCircleCenter) { lx = p.x - 14; ly = p.y - 14; }
-                        else if (centroid) { const dx = p.x - centroid.x, dy = p.y - centroid.y, d = Math.sqrt(dx * dx + dy * dy); if (d > 0) { lx = p.x + (dx / d) * 18; ly = p.y + (dy / d) * 18; } }
+                        else if (centroid) {
+                            const dx = p.x - centroid.x, dy = p.y - centroid.y, d = Math.sqrt(dx * dx + dy * dy);
+                            if (d > 0) { lx = p.x + (dx / d) * 18; ly = p.y + (dy / d) * 18; }
+                        }
                         svgParts.push(`<text x="${lx.toFixed(2)}" y="${ly.toFixed(2)}" fill="#111827" font-family="Times New Roman, serif" font-size="16" font-weight="bold" font-style="italic" text-anchor="middle" dominant-baseline="middle">${escapeXml(p.label)}</text>`);
                     }
                 });
             });
 
-            svgParts.push('</svg>'); return svgParts.join('\n');
+            svgParts.push('</svg>');
+            return svgParts.join('\n');
         }
 
         function downloadSVG() {
-            const svgStr = generateSVGString(); if (!svgStr) return;
-            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
-            a.href = url; a.download = `shape_export_${Date.now()}.svg`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            const svgStr = generateSVGString();
+            if (!svgStr) return;
+            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `shape_export_${Date.now()}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
             showToast('📐 SVG 벡터 파일이 다운로드되었습니다');
         }
 
         function downloadPNG() {
             if (!printPreviewImg.src) return;
-            const a = document.createElement('a'); a.href = printPreviewImg.src; a.download = `shape_export_${Date.now()}.png`;
-            document.body.appendChild(a); a.click(); a.remove(); showToast('🖼️ PNG 이미지가 다운로드되었습니다');
+            const a = document.createElement('a');
+            a.href = printPreviewImg.src;
+            a.download = `shape_export_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast('🖼️ PNG 이미지가 다운로드되었습니다');
         }
 
         function downloadPDF() {
             if (!printPreviewImg.src || !window.jspdf) return;
-            const { jsPDF } = window.jspdf, img = new Image();
+            const { jsPDF } = window.jspdf;
+            const img = new Image();
             img.onload = () => {
-                const isLandscape = img.width > img.height, pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
-                const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight(), margin = 15, availW = pageW - margin * 2, availH = pageH - margin * 2;
-                const ratio = Math.min(availW / img.width, availH / img.height), renderW = img.width * ratio, renderH = img.height * ratio, offsetX = (pageW - renderW) / 2, offsetY = (pageH - renderH) / 2;
-                pdf.addImage(printPreviewImg.src, 'PNG', offsetX, offsetY, renderW, renderH); pdf.save(`shape_export_${Date.now()}.pdf`); showToast('📄 PDF 문서가 다운로드되었습니다');
+                const isLandscape = img.width > img.height;
+                const pdf = new jsPDF({
+                    orientation: isLandscape ? 'landscape' : 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                const pageW = pdf.internal.pageSize.getWidth();
+                const pageH = pdf.internal.pageSize.getHeight();
+                const margin = 15;
+                const availW = pageW - margin * 2;
+                const availH = pageH - margin * 2;
+                const ratio = Math.min(availW / img.width, availH / img.height);
+                const renderW = img.width * ratio;
+                const renderH = img.height * ratio;
+                const offsetX = (pageW - renderW) / 2;
+                const offsetY = (pageH - renderH) / 2;
+
+                pdf.addImage(printPreviewImg.src, 'PNG', offsetX, offsetY, renderW, renderH);
+                pdf.save(`shape_export_${Date.now()}.pdf`);
+                showToast('📄 PDF 문서가 다운로드되었습니다');
             };
             img.src = printPreviewImg.src;
         }
 
         function groupSelectedShapes() {
             if (selectedShapeIndices.length < 2) return showToast('⚠️ 2개 이상의 도형을 선택하세요.');
-            const gId = 'group_' + Date.now(); selectedShapeIndices.forEach(idx => { if (shapes[idx]) shapes[idx].groupId = gId; }); saveHistory(); draw(); showToast(`📦 그룹 생성됨`);
+            const gId = 'group_' + Date.now();
+            selectedShapeIndices.forEach(idx => { if (shapes[idx]) shapes[idx].groupId = gId; });
+            saveHistory(); draw(); showToast(`📦 그룹 생성됨`);
         }
 
         function ungroupSelectedShapes() {
-            let count = 0; selectedShapeIndices.forEach(idx => { if (shapes[idx] && shapes[idx].groupId) { delete shapes[idx].groupId; count++; } });
+            let count = 0;
+            selectedShapeIndices.forEach(idx => {
+                if (shapes[idx] && shapes[idx].groupId) { delete shapes[idx].groupId; count++; }
+            });
             if (count > 0) { saveHistory(); draw(); showToast('🔓 그룹 해제됨'); }
         }
 
         function setMode(newMode) {
             if (mode === newMode) return;
             mode = newMode;
-            if (mode === 'draw') { modeDrawBtn.classList.add('active'); modeSelectBtn.classList.remove('active'); updateDrawToolUI(); } 
-            else { modeSelectBtn.classList.add('active'); modeDrawBtn.classList.remove('active'); drawBtns.forEach(btn => btn.classList.remove('active')); if (currentShape.length > 0) currentShape = []; }
+            if (mode === 'draw') {
+                modeDrawBtn.classList.add('active'); modeSelectBtn.classList.remove('active');
+                updateDrawToolUI();
+            } else {
+                modeSelectBtn.classList.add('active'); modeDrawBtn.classList.remove('active');
+                drawBtns.forEach(btn => btn.classList.remove('active'));
+                if (currentShape.length > 0) currentShape = [];
+            }
             draw();
         }
 
@@ -2114,142 +2373,134 @@
                 if(drawType === 'circle') drawCircleBtn.classList.add('active');
                 if(drawType === 'regular') drawRegularPolygonBtn.classList.add('active');
                 if(drawType === 'tangent') drawTangentBtn.classList.add('active');
-                if(drawType === 'text') drawTextBtn.classList.add('active');
             }
         }
 
         function applyEdgeLengthChange(sIdx, v1, v2, newLenCm) {
-            const shape = shapes[sIdx]; if (!shape || !shape[v1] || !shape[v2]) return;
-            const valCm = parseFloat(newLenCm); if (isNaN(valCm) || valCm <= 0) return;
-            const targetLen = valCm * 50, p1 = shape[v1], p2 = shape[v2], dx = p2.x - p1.x, dy = p2.y - p1.y, currentLen = Math.sqrt(dx*dx + dy*dy);
+            const shape = shapes[sIdx];
+            if (!shape || !shape[v1] || !shape[v2]) return;
+            const valCm = parseFloat(newLenCm);
+            if (isNaN(valCm) || valCm <= 0) return;
+            const targetLen = valCm * 50;
+            const p1 = shape[v1], p2 = shape[v2];
+            const dx = p2.x - p1.x, dy = p2.y - p1.y, currentLen = Math.sqrt(dx*dx + dy*dy);
             if (currentLen > 0) {
-                p2.x = p1.x + (dx / currentLen) * targetLen; p2.y = p1.y + (dy / currentLen) * targetLen;
-                if(shape.type === 'sector' && v1 === 0 && v2 === 1) { const a2 = Math.atan2(shape[2].y - p1.y, shape[2].x - p1.x); shape[2].x = p1.x + targetLen * Math.cos(a2); shape[2].y = p1.y + targetLen * Math.sin(a2); }
+                p2.x = p1.x + (dx / currentLen) * targetLen;
+                p2.y = p1.y + (dy / currentLen) * targetLen;
+                if(shape.type === 'sector' && v1 === 0 && v2 === 1) {
+                    const a2 = Math.atan2(shape[2].y - p1.y, shape[2].x - p1.x);
+                    shape[2].x = p1.x + targetLen * Math.cos(a2);
+                    shape[2].y = p1.y + targetLen * Math.sin(a2);
+                }
                 applyConstraints(); draw();
             }
         }
 
         function applyAngleChange(sIdx, vIdx, newAngleDeg) {
-            const shape = shapes[sIdx]; if (!shape || shape.length < 3) return;
+            const shape = shapes[sIdx];
+            if (!shape || shape.length < 3) return;
             if (shape.type === 'sector') {
                 if (vIdx === 0) {
-                    const valDeg = parseFloat(newAngleDeg); if (isNaN(valDeg)) return;
-                    const c = shape[0], p1 = shape[1], p2 = shape[2], r = Math.sqrt(dist2(c, p1)), a1 = Math.atan2(p1.y - c.y, p1.x - c.x), targetAngleRad = a1 + (valDeg * Math.PI / 180);
-                    p2.x = c.x + r * Math.cos(targetAngleRad); p2.y = c.y + r * Math.sin(targetAngleRad); applyConstraints(); draw();
+                    const valDeg = parseFloat(newAngleDeg);
+                    if (isNaN(valDeg)) return;
+                    const c = shape[0], p1 = shape[1], p2 = shape[2];
+                    const r = Math.sqrt(dist2(c, p1));
+                    const a1 = Math.atan2(p1.y - c.y, p1.x - c.x);
+                    const targetAngleRad = a1 + (valDeg * Math.PI / 180);
+                    p2.x = c.x + r * Math.cos(targetAngleRad);
+                    p2.y = c.y + r * Math.sin(targetAngleRad);
+                    applyConstraints(); draw();
                 }
                 return;
             }
-            const valDeg = parseFloat(newAngleDeg); if (isNaN(valDeg)) return;
-            const p2 = shape[vIdx], p1 = shape[(vIdx - 1 + shape.length) % shape.length], p3 = shape[(vIdx + 1) % shape.length], a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
+
+            const valDeg = parseFloat(newAngleDeg);
+            if (isNaN(valDeg)) return;
+            const p2 = shape[vIdx];
+            const p1 = shape[(vIdx - 1 + shape.length) % shape.length], p3 = shape[(vIdx + 1) % shape.length];
+            const a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
             let isCW = true; if (shape.length >= 3 && shape.type === 'polygon') isCW = getPolygonArea(shape) > 0;
-            const targetAngleRad = valDeg * Math.PI / 180, a2_new = isCW ? (a1 - targetAngleRad) : (a1 + targetAngleRad), dist = Math.sqrt(dist2(p2, p3));
-            p3.x = p2.x + dist * Math.cos(a2_new); p3.y = p2.y + dist * Math.sin(a2_new); applyConstraints(); draw();
+            const targetAngleRad = valDeg * Math.PI / 180;
+            const a2_new = isCW ? (a1 - targetAngleRad) : (a1 + targetAngleRad);
+            const dist = Math.sqrt(dist2(p2, p3));
+            p3.x = p2.x + dist * Math.cos(a2_new); p3.y = p2.y + dist * Math.sin(a2_new);
+            applyConstraints(); draw();
         }
 
         function updatePanels(shapeIndex, fromMouseMove = false) {
             if (shapeIndex === null) {
-                canvasPropsContent.classList.remove('hidden'); objectPropsContent.classList.add('hidden'); sidebarLockIndicator.classList.add('hidden');
+                canvasPropsContent.classList.remove('hidden'); objectPropsContent.classList.add('hidden');
+                sidebarLockIndicator.classList.add('hidden');
                 if (!fromMouseMove) { activePanelShapeIndex = null; sidebarTitle.innerText = "캔버스 속성"; }
                 return;
             }
 
-            const shape = shapes[shapeIndex]; if (!shape) return;
+            const shape = shapes[shapeIndex];
+            if (!shape) return;
 
             if (selectedShapeIndices.length === 1 && selectedShapeIndices[0] === shapeIndex) {
-                sidebarLockIndicator.classList.remove('hidden'); sidebarLockIndicator.innerText = "도형 선택됨"; sidebarLockIndicator.classList.replace('bg-indigo-600', 'bg-blue-600');
-            } else { sidebarLockIndicator.classList.add('hidden'); }
+                sidebarLockIndicator.classList.remove('hidden'); sidebarLockIndicator.innerText = "도형 선택됨";
+                sidebarLockIndicator.classList.replace('bg-indigo-600', 'bg-blue-600');
+            } else {
+                sidebarLockIndicator.classList.add('hidden');
+            }
 
             if (activePanelShapeIndex === shapeIndex && fromMouseMove) return;
 
-            activePanelShapeIndex = shapeIndex; canvasPropsContent.classList.add('hidden'); objectPropsContent.classList.remove('hidden'); sidebarTitle.innerText = getShapeName(shape) + " 편집";
+            activePanelShapeIndex = shapeIndex;
+            canvasPropsContent.classList.add('hidden'); objectPropsContent.classList.remove('hidden');
+            sidebarTitle.innerText = getShapeName(shape) + " 편집";
 
-            multiEditForm.innerHTML = ''; const shapeType = shape.type || 'polygon';
+            multiEditForm.innerHTML = '';
+            const shapeType = shape.type || 'polygon';
 
-            // --- 텍스트 편집 모드 ---
-            if (shapeType === 'text') {
-                const textRow = document.createElement('div'); textRow.className = 'flex flex-col gap-2 p-3 bg-white border border-gray-100 rounded shadow-sm';
-                
-                const label = document.createElement('label'); label.className = 'text-xs font-bold text-gray-700'; label.innerText = '텍스트 내용';
-                const input = document.createElement('textarea'); input.className = 'w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500';
-                input.value = shape.text || ''; input.oninput = () => { shape.text = input.value; saveHistory(); draw(); };
-                
-                const sizeLabel = document.createElement('label'); sizeLabel.className = 'text-xs font-bold text-gray-700 mt-2'; sizeLabel.innerText = '글자 크기 (px)';
-                const sizeInput = document.createElement('input'); sizeInput.type = 'number'; sizeInput.className = 'w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500';
-                sizeInput.value = shape.fontSize || 24; sizeInput.oninput = () => { shape.fontSize = parseInt(sizeInput.value) || 24; saveHistory(); draw(); };
-
-                const colorLabel = document.createElement('label'); colorLabel.className = 'text-xs font-bold text-gray-700 mt-2'; colorLabel.innerText = '글자 색상';
-                const colorInput = document.createElement('input'); colorInput.type = 'color'; colorInput.className = 'w-full h-8 cursor-pointer border border-gray-300 rounded';
-                colorInput.value = shape.textColor || '#000000'; colorInput.oninput = () => { shape.textColor = colorInput.value; saveHistory(); draw(); };
-
-                textRow.appendChild(label); textRow.appendChild(input); textRow.appendChild(sizeLabel); textRow.appendChild(sizeInput); textRow.appendChild(colorLabel); textRow.appendChild(colorInput); multiEditForm.appendChild(textRow);
-                return;
-            }
-
-            // --- 스타일 설정 영역 (선 굵기/색상/점선 + 도형 내부 채우기) ---
-            const styleSection = document.createElement('div'); styleSection.className = 'mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm';
-            styleSection.innerHTML = '<div class="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">스타일 설정</div>';
-            const styleGrid = document.createElement('div'); styleGrid.className = 'grid grid-cols-2 gap-3';
-
-            const wDiv = document.createElement('div'); wDiv.innerHTML = '<label class="block text-[10px] font-bold text-gray-600 mb-1">선 굵기</label>';
-            const wInput = document.createElement('input'); wInput.type = 'number'; wInput.step = '0.5'; wInput.min = '0.5'; wInput.max = '20'; wInput.className = 'w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500'; wInput.value = shape.strokeWidth || 2.5; wInput.oninput = () => { shape.strokeWidth = parseFloat(wInput.value) || 2.5; saveHistory(); draw(); };
-            wDiv.appendChild(wInput);
-
-            const cDiv = document.createElement('div'); cDiv.innerHTML = '<label class="block text-[10px] font-bold text-gray-600 mb-1">선 색상</label>';
-            const cInput = document.createElement('input'); cInput.type = 'color'; cInput.className = 'w-full h-6 cursor-pointer border border-gray-300 rounded'; cInput.value = shape.strokeColor || '#4f46e5'; cInput.oninput = () => { shape.strokeColor = cInput.value; saveHistory(); draw(); };
-            cDiv.appendChild(cInput);
-
-            const sDiv = document.createElement('div'); sDiv.className = 'col-span-2'; sDiv.innerHTML = '<label class="block text-[10px] font-bold text-gray-600 mb-1">선 종류</label>';
-            const sSelect = document.createElement('select'); sSelect.className = 'w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500'; sSelect.innerHTML = `<option value="solid">실선 (Solid)</option><option value="dashed">점선 (Dashed)</option><option value="dashdot">쇄선 (Dash-dot)</option>`; sSelect.value = shape.lineStyle || 'solid'; sSelect.onchange = () => { shape.lineStyle = sSelect.value; saveHistory(); draw(); };
-            sDiv.appendChild(sSelect);
-
-            styleGrid.appendChild(wDiv); styleGrid.appendChild(cDiv); styleGrid.appendChild(sDiv);
-
-            if (shapeType === 'polygon' || shapeType === 'circle' || shapeType === 'sector') {
-                const fcDiv = document.createElement('div'); fcDiv.innerHTML = '<label class="block text-[10px] font-bold text-gray-600 mb-1">채우기 색상</label>';
-                const fcInput = document.createElement('input'); fcInput.type = 'color'; fcInput.className = 'w-full h-6 cursor-pointer border border-gray-300 rounded'; fcInput.value = shape.fillColor || '#4f46e5'; fcInput.oninput = () => { shape.fillColor = fcInput.value; saveHistory(); draw(); };
-                fcDiv.appendChild(fcInput);
-
-                const opDiv = document.createElement('div'); opDiv.innerHTML = '<label class="block text-[10px] font-bold text-gray-600 mb-1">채우기 투명도</label>';
-                const opInput = document.createElement('input'); opInput.type = 'range'; opInput.min = '0'; opInput.max = '1'; opInput.step = '0.05'; opInput.className = 'w-full cursor-pointer mt-1'; opInput.value = shape.fillOpacity !== undefined ? shape.fillOpacity : 0.05;
-                const opVal = document.createElement('div'); opVal.className = 'text-[9px] text-right text-gray-500'; opVal.innerText = `${Math.round(opInput.value * 100)}%`;
-                opInput.oninput = () => { shape.fillOpacity = parseFloat(opInput.value); opVal.innerText = `${Math.round(shape.fillOpacity * 100)}%`; saveHistory(); draw(); };
-                
-                opDiv.appendChild(opInput); opDiv.appendChild(opVal);
-                styleGrid.appendChild(fcDiv); styleGrid.appendChild(opDiv);
-            }
-            styleSection.appendChild(styleGrid); multiEditForm.appendChild(styleSection);
-
-            // --- 기존 수치 편집 ---
             if (shapeType === 'polygon' || shapeType === 'line') {
                 let edges = [];
                 if (shapeType === 'polygon') { for (let i = 0; i < shape.length; i++) edges.push([i, (i + 1) % shape.length]); }
                 else if (shapeType === 'line') { edges.push([0, 1]); }
 
                 edges.forEach(([v1, v2]) => {
-                    const p1 = shape[v1], p2 = shape[v2], lPx = Math.sqrt(dist2(p1, p2)), lCm = (lPx / 50).toFixed(1), lineName = `${p1.label||''}${p2.label||''}`;
+                    const p1 = shape[v1], p2 = shape[v2];
+                    const lPx = Math.sqrt(dist2(p1, p2)), lCm = (lPx / 50).toFixed(1);
+                    const lineName = `${p1.label||''}${p2.label||''}`;
 
                     const row = document.createElement('div'); row.className = 'flex items-center justify-between gap-2 p-1.5 bg-white border border-gray-100 rounded shadow-sm hover:shadow-md transition-shadow';
                     
                     const leftDiv = document.createElement('div'); leftDiv.className = 'flex items-center gap-1.5 shrink-0 w-16';
-                    const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'form-checkbox h-3.5 w-3.5 text-indigo-600 rounded'; check.checked = p1.showLength !== false; check.onchange = () => { p1.showLength = check.checked; saveHistory(); draw(); };
+                    const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'form-checkbox h-3.5 w-3.5 text-indigo-600 rounded'; check.checked = p1.showLength !== false;
+                    check.onchange = () => { p1.showLength = check.checked; saveHistory(); draw(); };
                     const label = document.createElement('span'); label.className = 'text-xs font-bold text-gray-700 truncate'; label.innerText = lineName ? `선${lineName}` : '선분';
                     leftDiv.appendChild(check); leftDiv.appendChild(label);
                     
                     const rightDiv = document.createElement('div'); rightDiv.className = 'flex items-center gap-1 flex-1 min-w-0 justify-end';
+
                     const decoSelect = document.createElement('select'); decoSelect.className = 'w-14 shrink-0 px-1 py-1 text-[11px] border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 bg-white cursor-pointer';
-                    const decoOpts = [{val: '', text: '기호'}, {val: 'hatch1', text: '|'}, {val: 'hatch2', text: '||'}, {val: 'arrow1', text: '>'}, {val: 'arrow2', text: '>>'}];
-                    decoOpts.forEach(opt => { const o = document.createElement('option'); o.value = opt.val; o.innerText = opt.text; if (p1.edgeDeco === opt.val) o.selected = true; decoSelect.appendChild(o); });
-                    decoSelect.onchange = () => { p1.edgeDeco = decoSelect.value; saveHistory(); draw(); }; rightDiv.appendChild(decoSelect);
+                    const decoOpts = [
+                        {val: '', text: '기호'}, {val: 'hatch1', text: '|'}, {val: 'hatch2', text: '||'}, 
+                        {val: 'arrow1', text: '>'}, {val: 'arrow2', text: '>>'}
+                    ];
+                    decoOpts.forEach(opt => {
+                        const o = document.createElement('option'); o.value = opt.val; o.innerText = opt.text;
+                        if (p1.edgeDeco === opt.val) o.selected = true;
+                        decoSelect.appendChild(o);
+                    });
+                    decoSelect.onchange = () => { p1.edgeDeco = decoSelect.value; saveHistory(); draw(); };
+                    rightDiv.appendChild(decoSelect);
                     
-                    const numInput = document.createElement('input'); numInput.type = 'number'; numInput.step = '0.5'; numInput.min = '0.1'; numInput.className = 'w-12 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500'; numInput.value = lCm;
+                    const numInput = document.createElement('input'); numInput.type = 'number'; numInput.step = '0.5'; numInput.min = '0.1'; numInput.className = 'w-12 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500';
+                    numInput.value = lCm;
                     numInput.onkeydown = (e) => { if(e.key==='Enter'){ applyEdgeLengthChange(shapeIndex, v1, v2, numInput.value); saveHistory(); } else if(e.key==='ArrowUp' || e.key==='ArrowDown') { setTimeout(() => { applyEdgeLengthChange(shapeIndex, v1, v2, numInput.value); }, 10); } };
                     numInput.onwheel = (e) => { e.preventDefault(); numInput.value = (parseFloat(numInput.value) + (e.deltaY > 0 ? -0.5 : 0.5)).toFixed(1); applyEdgeLengthChange(shapeIndex, v1, v2, numInput.value); };
                     
-                    const textInput = document.createElement('input'); textInput.type = 'text'; textInput.placeholder = '변수(x)'; textInput.className = 'w-12 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500'; textInput.value = p1.customLength || ''; textInput.onchange = () => { p1.customLength = textInput.value; saveHistory(); draw(); };
+                    const textInput = document.createElement('input'); textInput.type = 'text'; textInput.placeholder = '변수(x)'; textInput.className = 'w-12 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500';
+                    textInput.value = p1.customLength || '';
+                    textInput.onchange = () => { p1.customLength = textInput.value; saveHistory(); draw(); };
 
                     rightDiv.appendChild(numInput); 
                     const unitSpan = document.createElement('span'); unitSpan.className = 'text-[10px] text-gray-500'; unitSpan.innerText = 'cm';
-                    rightDiv.appendChild(unitSpan); rightDiv.appendChild(textInput);
+                    rightDiv.appendChild(unitSpan);
+                    rightDiv.appendChild(textInput);
+                    
                     row.appendChild(leftDiv); row.appendChild(rightDiv); multiEditForm.appendChild(row);
                 });
 
@@ -2258,22 +2509,35 @@
                     shape.forEach((p2, i) => {
                         const p1 = shape[(i - 1 + shape.length) % shape.length], p3 = shape[(i + 1) % shape.length];
                         let a1 = Math.atan2(p1.y - p2.y, p1.x - p2.x), a2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
-                        let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI; let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW; if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI; const deg = (interiorAngle * 180 / Math.PI).toFixed(0);
+                        let angleCCW = a2 - a1; while (angleCCW < 0) angleCCW += 2 * Math.PI;
+                        let interiorAngle = isCW ? (2 * Math.PI - angleCCW) : angleCCW; if (interiorAngle >= 2 * Math.PI) interiorAngle -= 2 * Math.PI;
+                        const deg = (interiorAngle * 180 / Math.PI).toFixed(0);
 
                         const row = document.createElement('div'); row.className = 'flex items-center justify-between gap-2 p-1.5 bg-white border border-gray-100 rounded shadow-sm hover:shadow-md transition-shadow';
+                        
                         const leftDiv = document.createElement('div'); leftDiv.className = 'flex items-center gap-1.5 shrink-0 w-16';
-                        const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'form-checkbox h-3.5 w-3.5 text-amber-500 rounded'; check.checked = p2.showAngle !== false; check.onchange = () => { p2.showAngle = check.checked; saveHistory(); draw(); };
-                        const label = document.createElement('span'); label.className = 'text-xs font-bold text-gray-700 truncate'; label.innerText = `각${p2.label||''}`; leftDiv.appendChild(check); leftDiv.appendChild(label);
+                        const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'form-checkbox h-3.5 w-3.5 text-amber-500 rounded'; check.checked = p2.showAngle !== false;
+                        check.onchange = () => { p2.showAngle = check.checked; saveHistory(); draw(); };
+                        const label = document.createElement('span'); label.className = 'text-xs font-bold text-gray-700 truncate'; label.innerText = `각${p2.label||''}`;
+                        leftDiv.appendChild(check); leftDiv.appendChild(label);
                         
                         const rightDiv = document.createElement('div'); rightDiv.className = 'flex items-center gap-1 flex-1 justify-end';
-                        const numInput = document.createElement('input'); numInput.type = 'number'; numInput.step = '1'; numInput.min = '1'; numInput.max = '359'; numInput.className = 'w-14 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500'; numInput.value = deg;
+                        
+                        const numInput = document.createElement('input'); numInput.type = 'number'; numInput.step = '1'; numInput.min = '1'; numInput.max = '359'; numInput.className = 'w-14 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500';
+                        numInput.value = deg;
                         numInput.onkeydown = (e) => { if(e.key==='Enter'){ applyAngleChange(shapeIndex, i, numInput.value); saveHistory(); } else if(e.key==='ArrowUp' || e.key==='ArrowDown') { setTimeout(() => { applyAngleChange(shapeIndex, i, numInput.value); }, 10); } };
                         numInput.onwheel = (e) => { e.preventDefault(); numInput.value = (parseFloat(numInput.value) + (e.deltaY > 0 ? -1 : 1)).toFixed(0); applyAngleChange(shapeIndex, i, numInput.value); };
                         
-                        const textInput = document.createElement('input'); textInput.type = 'text'; textInput.placeholder = '변수(a)'; textInput.className = 'flex-1 min-w-[50px] px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500'; textInput.value = p2.customAngle || ''; textInput.onchange = () => { p2.customAngle = textInput.value; saveHistory(); draw(); };
+                        const textInput = document.createElement('input'); textInput.type = 'text'; textInput.placeholder = '변수(ex: a)'; textInput.className = 'flex-1 min-w-[50px] px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500';
+                        textInput.value = p2.customAngle || '';
+                        textInput.onchange = () => { p2.customAngle = textInput.value; saveHistory(); draw(); };
 
-                        rightDiv.appendChild(numInput); const unitSpan = document.createElement('span'); unitSpan.className = 'text-[10px] text-gray-500'; unitSpan.innerText = '°';
-                        rightDiv.appendChild(unitSpan); rightDiv.appendChild(textInput); row.appendChild(leftDiv); row.appendChild(rightDiv); multiEditForm.appendChild(row);
+                        rightDiv.appendChild(numInput); 
+                        const unitSpan = document.createElement('span'); unitSpan.className = 'text-[10px] text-gray-500'; unitSpan.innerText = '°';
+                        rightDiv.appendChild(unitSpan);
+                        rightDiv.appendChild(textInput);
+                        
+                        row.appendChild(leftDiv); row.appendChild(rightDiv); multiEditForm.appendChild(row);
                     });
                 }
 
@@ -2283,53 +2547,74 @@
                     const row = document.createElement('div'); row.className = 'flex items-center gap-2 p-1.5 bg-white border border-gray-100 rounded shadow-sm';
                     const lbl = document.createElement('span'); lbl.className = 'text-[10px] text-gray-600 font-bold'; lbl.innerText = `점 ${i+1}`;
                     const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'w-full px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 font-bold';
-                    inp.value = p.label || ''; inp.onchange = () => { p.label = inp.value; saveHistory(); draw(); updatePanels(shapeIndex, true); };
+                    inp.value = p.label || '';
+                    inp.onchange = () => { p.label = inp.value; saveHistory(); draw(); updatePanels(shapeIndex, true); };
                     row.appendChild(lbl); row.appendChild(inp); pointGrid.appendChild(row);
                 });
                 multiEditForm.appendChild(pointGrid);
 
             } else if (shapeType === 'circle' || shapeType === 'sector') {
-                const c = shape[0], p1 = shape[1], rPx = Math.sqrt(dist2(c, p1)), rCm = (rPx / 50).toFixed(1);
+                const c = shape[0], p1 = shape[1];
+                const rPx = Math.sqrt(dist2(c, p1)), rCm = (rPx / 50).toFixed(1);
 
                 const row = document.createElement('div'); row.className = 'flex items-center justify-between gap-2 p-1.5 bg-white border border-gray-100 rounded shadow-sm hover:shadow-md transition-shadow';
                 const leftDiv = document.createElement('div'); leftDiv.className = 'flex items-center gap-1.5 shrink-0 w-16';
-                const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'form-checkbox h-3.5 w-3.5 text-indigo-600 rounded'; check.checked = c.showLength !== false; check.onchange = () => { c.showLength = check.checked; saveHistory(); draw(); };
-                const label = document.createElement('span'); label.className = 'text-xs font-bold text-gray-700 truncate'; label.innerText = '반지름'; leftDiv.appendChild(check); leftDiv.appendChild(label);
+                const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'form-checkbox h-3.5 w-3.5 text-indigo-600 rounded'; check.checked = c.showLength !== false;
+                check.onchange = () => { c.showLength = check.checked; saveHistory(); draw(); };
+                const label = document.createElement('span'); label.className = 'text-xs font-bold text-gray-700 truncate'; label.innerText = '반지름';
+                leftDiv.appendChild(check); leftDiv.appendChild(label);
                 
                 const rightDiv = document.createElement('div'); rightDiv.className = 'flex items-center gap-1 flex-1 justify-end';
-                const numInput = document.createElement('input'); numInput.type = 'number'; numInput.step = '0.5'; numInput.min = '0.1'; numInput.className = 'w-14 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500'; numInput.value = rCm;
+                const numInput = document.createElement('input'); numInput.type = 'number'; numInput.step = '0.5'; numInput.min = '0.1'; numInput.className = 'w-14 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500';
+                numInput.value = rCm;
                 numInput.onkeydown = (e) => { if(e.key==='Enter'){ applyEdgeLengthChange(shapeIndex, 0, 1, numInput.value); saveHistory(); } else if(e.key==='ArrowUp' || e.key==='ArrowDown') { setTimeout(() => { applyEdgeLengthChange(shapeIndex, 0, 1, numInput.value); }, 10); } };
                 numInput.onwheel = (e) => { e.preventDefault(); numInput.value = (parseFloat(numInput.value) + (e.deltaY > 0 ? -0.5 : 0.5)).toFixed(1); applyEdgeLengthChange(shapeIndex, 0, 1, numInput.value); };
                 
-                const textInput = document.createElement('input'); textInput.type = 'text'; textInput.placeholder = '변수(r)'; textInput.className = 'flex-1 min-w-[50px] px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500'; textInput.value = c.customLength || ''; textInput.onchange = () => { c.customLength = textInput.value; saveHistory(); draw(); };
+                const textInput = document.createElement('input'); textInput.type = 'text'; textInput.placeholder = '변수(ex: r)'; textInput.className = 'flex-1 min-w-[50px] px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500';
+                textInput.value = c.customLength || '';
+                textInput.onchange = () => { c.customLength = textInput.value; saveHistory(); draw(); };
 
-                rightDiv.appendChild(numInput); const unitSpan = document.createElement('span'); unitSpan.className = 'text-[10px] text-gray-500'; unitSpan.innerText = 'cm';
-                rightDiv.appendChild(unitSpan); rightDiv.appendChild(textInput); row.appendChild(leftDiv); row.appendChild(rightDiv); multiEditForm.appendChild(row);
+                rightDiv.appendChild(numInput); 
+                const unitSpan = document.createElement('span'); unitSpan.className = 'text-[10px] text-gray-500'; unitSpan.innerText = 'cm';
+                rightDiv.appendChild(unitSpan); rightDiv.appendChild(textInput);
+                row.appendChild(leftDiv); row.appendChild(rightDiv); multiEditForm.appendChild(row);
 
                 if (shapeType === 'sector') {
-                    const p2 = shape[2], a1 = Math.atan2(p1.y - c.y, p1.x - c.x), a2 = Math.atan2(p2.y - c.y, p2.x - c.x); let diff = a2 - a1; while (diff < 0) diff += Math.PI * 2; const deg = (diff * 180 / Math.PI).toFixed(0);
+                    const p2 = shape[2];
+                    const a1 = Math.atan2(p1.y - c.y, p1.x - c.x);
+                    const a2 = Math.atan2(p2.y - c.y, p2.x - c.x);
+                    let diff = a2 - a1; while (diff < 0) diff += Math.PI * 2;
+                    const deg = (diff * 180 / Math.PI).toFixed(0);
 
                     const angleRow = document.createElement('div'); angleRow.className = 'flex items-center justify-between gap-2 p-1.5 bg-white border border-gray-100 rounded shadow-sm hover:shadow-md transition-shadow';
                     const angleLeftDiv = document.createElement('div'); angleLeftDiv.className = 'flex items-center gap-1.5 shrink-0 w-16';
-                    const angleCheck = document.createElement('input'); angleCheck.type = 'checkbox'; angleCheck.className = 'form-checkbox h-3.5 w-3.5 text-amber-500 rounded'; angleCheck.checked = c.showAngle !== false; angleCheck.onchange = () => { c.showAngle = angleCheck.checked; saveHistory(); draw(); };
-                    const angleLabel = document.createElement('span'); angleLabel.className = 'text-xs font-bold text-gray-700 truncate'; angleLabel.innerText = '중심각'; angleLeftDiv.appendChild(angleCheck); angleLeftDiv.appendChild(angleLabel);
+                    const angleCheck = document.createElement('input'); angleCheck.type = 'checkbox'; angleCheck.className = 'form-checkbox h-3.5 w-3.5 text-amber-500 rounded'; angleCheck.checked = c.showAngle !== false;
+                    angleCheck.onchange = () => { c.showAngle = angleCheck.checked; saveHistory(); draw(); };
+                    const angleLabel = document.createElement('span'); angleLabel.className = 'text-xs font-bold text-gray-700 truncate'; angleLabel.innerText = '중심각';
+                    angleLeftDiv.appendChild(angleCheck); angleLeftDiv.appendChild(angleLabel);
                     
                     const angleRightDiv = document.createElement('div'); angleRightDiv.className = 'flex items-center gap-1 flex-1 justify-end';
-                    const angleNumInput = document.createElement('input'); angleNumInput.type = 'number'; angleNumInput.step = '1'; angleNumInput.min = '1'; angleNumInput.max = '359'; angleNumInput.className = 'w-14 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500'; angleNumInput.value = deg;
+                    const angleNumInput = document.createElement('input'); angleNumInput.type = 'number'; angleNumInput.step = '1'; angleNumInput.min = '1'; angleNumInput.max = '359'; angleNumInput.className = 'w-14 shrink-0 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500';
+                    angleNumInput.value = deg;
                     angleNumInput.onkeydown = (e) => { if(e.key==='Enter'){ applyAngleChange(shapeIndex, 0, angleNumInput.value); saveHistory(); } else if(e.key==='ArrowUp' || e.key==='ArrowDown') { setTimeout(() => { applyAngleChange(shapeIndex, 0, angleNumInput.value); }, 10); } };
                     angleNumInput.onwheel = (e) => { e.preventDefault(); angleNumInput.value = (parseFloat(angleNumInput.value) + (e.deltaY > 0 ? -1 : 1)).toFixed(0); applyAngleChange(shapeIndex, 0, angleNumInput.value); };
                     
-                    const angleTextInput = document.createElement('input'); angleTextInput.type = 'text'; angleTextInput.placeholder = '변수(x)'; angleTextInput.className = 'flex-1 min-w-[50px] px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500'; angleTextInput.value = c.customAngle || ''; angleTextInput.onchange = () => { c.customAngle = angleTextInput.value; saveHistory(); draw(); };
+                    const angleTextInput = document.createElement('input'); angleTextInput.type = 'text'; angleTextInput.placeholder = '변수(ex: x)'; angleTextInput.className = 'flex-1 min-w-[50px] px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-amber-500';
+                    angleTextInput.value = c.customAngle || '';
+                    angleTextInput.onchange = () => { c.customAngle = angleTextInput.value; saveHistory(); draw(); };
 
-                    angleRightDiv.appendChild(angleNumInput); const unitSpanAngle = document.createElement('span'); unitSpanAngle.className = 'text-[10px] text-gray-500'; unitSpanAngle.innerText = '°';
-                    angleRightDiv.appendChild(unitSpanAngle); angleRightDiv.appendChild(angleTextInput); angleRow.appendChild(angleLeftDiv); angleRow.appendChild(angleRightDiv); multiEditForm.appendChild(angleRow);
+                    angleRightDiv.appendChild(angleNumInput); 
+                    const unitSpanAngle = document.createElement('span'); unitSpanAngle.className = 'text-[10px] text-gray-500'; unitSpanAngle.innerText = '°';
+                    angleRightDiv.appendChild(unitSpanAngle); angleRightDiv.appendChild(angleTextInput);
+                    angleRow.appendChild(angleLeftDiv); angleRow.appendChild(angleRightDiv); multiEditForm.appendChild(angleRow);
                 }
 
                 const pointTitle = document.createElement('div'); pointTitle.className = 'text-[10px] font-bold text-gray-400 mt-2 mb-1 pl-1'; pointTitle.innerText = '중심점 라벨 변경'; multiEditForm.appendChild(pointTitle);
                 const rowLabel = document.createElement('div'); rowLabel.className = 'flex items-center gap-2 p-1.5 bg-white border border-gray-100 rounded shadow-sm';
                 const lbl = document.createElement('span'); lbl.className = 'text-[10px] text-gray-600 font-bold'; lbl.innerText = `중심(원점)`;
                 const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'flex-1 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 font-bold';
-                inp.value = c.label || ''; inp.onchange = () => { c.label = inp.value; saveHistory(); draw(); updatePanels(shapeIndex, true); };
+                inp.value = c.label || '';
+                inp.onchange = () => { c.label = inp.value; saveHistory(); draw(); updatePanels(shapeIndex, true); };
                 rowLabel.appendChild(lbl); rowLabel.appendChild(inp); multiEditForm.appendChild(rowLabel);
             }
         }
@@ -2338,92 +2623,158 @@
             if (selectedShapeIndices.length === 0) return;
             selectedShapeIndices.sort((a,b) => b-a).forEach(idx => {
                 const shapeId = shapes[idx].id;
-                shapes.forEach(s => { if(s.type !== 'text') s.forEach(p => { if (p.attachedTo && p.attachedTo.shapeId === shapeId) delete p.attachedTo; }); });
+                shapes.forEach(s => s.forEach(p => { if (p.attachedTo && p.attachedTo.shapeId === shapeId) delete p.attachedTo; }));
                 shapes.splice(idx, 1);
             });
-            selectedShapeIndices = []; updatePanels(null); applyConstraints(); saveHistory(); draw(); showToast('🗑️ 도형이 삭제되었습니다');
+            selectedShapeIndices = []; updatePanels(null); applyConstraints(); saveHistory(); draw();
+            showToast('🗑️ 도형이 삭제되었습니다');
         }
 
         function setupEvents() {
-            canvas.addEventListener('pointerdown', handlePointerDown); window.addEventListener('pointermove', handlePointerMove); window.addEventListener('pointerup', handlePointerUp); canvas.addEventListener('contextmenu', handleContextMenu);
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            window.addEventListener('pointermove', handlePointerMove);
+            window.addEventListener('pointerup', handlePointerUp);
+            canvas.addEventListener('contextmenu', handleContextMenu);
 
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Shift') { isShiftDown = true; if(mode==='draw') draw(); }
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                if (e.target.tagName === 'INPUT') return;
                 if (e.code === 'Space') { isSpaceDown = true; if (!isPanning) canvas.style.cursor = 'grab'; }
                 if (e.key === 'Delete' || e.key === 'Backspace') deleteSelectedShapes();
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
                 if (e.key === 'p' || e.key === 'P') { setDrawType('polygon'); showToast('✏️ 그리기 모드'); }
                 if (e.key === 'v' || e.key === 'V') { setMode('select'); showToast('🖐 선택 모드'); }
-                if (e.key === 't' || e.key === 'T') { setDrawType('text'); showToast('🔤 텍스트 라벨 입력 모드'); }
                 if ((e.ctrlKey || e.metaKey) && e.key === 'g' && !e.shiftKey) { e.preventDefault(); groupSelectedShapes(); }
                 if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'G') { e.preventDefault(); ungroupSelectedShapes(); }
 
-                if (e.key === 'u' || e.key === 'U') {
-                    let released = 0;
-                    if (hoverState && hoverState.type === 'vertex') { const p = shapes[hoverState.shapeIndex][hoverState.vertexIndex]; if (p.attachedTo) { delete p.attachedTo; released++; } } 
-                    else if (selectedShapeIndices.length > 0) { selectedShapeIndices.forEach(sIdx => { if(shapes[sIdx].type !== 'text') shapes[sIdx].forEach(p => { if (p.attachedTo) { delete p.attachedTo; released++; } }); }); }
-                    if (released > 0) { saveHistory(); draw(); showToast(`✂️ ${released}개의 구속이 해제되었습니다.`); }
+            if (e.key === 'u' || e.key === 'U') {
+                let released = 0;
+                if (hoverState && hoverState.type === 'vertex') {
+                    const p = shapes[hoverState.shapeIndex][hoverState.vertexIndex];
+                    if (p.attachedTo) { delete p.attachedTo; released++; }
+                } else if (selectedShapeIndices.length > 0) {
+                    selectedShapeIndices.forEach(sIdx => {
+                        shapes[sIdx].forEach(p => { if (p.attachedTo) { delete p.attachedTo; released++; } });
+                    });
                 }
+                if (released > 0) { saveHistory(); draw(); showToast(`✂️ ${released}개의 구속이 해제되었습니다.`); }
+            }
+
             });
             
             window.addEventListener('keyup', (e) => {
                 if (e.key === 'Shift') { isShiftDown = false; if(mode==='draw') draw(); }
-                if (e.code === 'Space') { isSpaceDown = false; if (!isPanning) canvas.style.cursor = (mode === 'draw') ? 'crosshair' : 'default'; }
+                if (e.code === 'Space') {
+                    isSpaceDown = false;
+                    if (!isPanning) canvas.style.cursor = (mode === 'draw') ? 'crosshair' : 'default';
+                }
             });
 
             canvasContainer.addEventListener('wheel', (e) => {
-                if (e.ctrlKey || e.metaKey) { e.preventDefault(); const rect = canvas.getBoundingClientRect(), physicalX = e.clientX - rect.left, physicalY = e.clientY - rect.top; setZoomAtPoint(globalScale * (e.deltaY > 0 ? 0.9 : 1.1), physicalX, physicalY); }
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const rect = canvas.getBoundingClientRect();
+                    const physicalX = e.clientX - rect.left, physicalY = e.clientY - rect.top;
+                    setZoomAtPoint(globalScale * (e.deltaY > 0 ? 0.9 : 1.1), physicalX, physicalY);
+                }
             }, { passive: false });
 
             zoomInBtn.addEventListener('click', () => { setZoomAtPoint(globalScale * 1.2, originX + (canvasContainer.clientWidth / 2), originY + (canvasContainer.clientHeight / 2)); });
             zoomOutBtn.addEventListener('click', () => { setZoomAtPoint(globalScale * 0.8, originX + (canvasContainer.clientWidth / 2), originY + (canvasContainer.clientHeight / 2)); });
-            zoomLevelText.addEventListener('click', () => { const cx = (canvasContainer.clientWidth / 2 - originX) / globalScale, cy = (canvasContainer.clientHeight / 2 - originY) / globalScale; globalScale = 1.0; originX = canvasContainer.clientWidth / 2 - cx * globalScale; originY = canvasContainer.clientHeight / 2 - cy * globalScale; updateZoomUI(); draw(); });
+            zoomLevelText.addEventListener('click', () => {
+                const cx = (canvasContainer.clientWidth / 2 - originX) / globalScale;
+                const cy = (canvasContainer.clientHeight / 2 - originY) / globalScale;
+                globalScale = 1.0;
+                originX = canvasContainer.clientWidth / 2 - cx * globalScale;
+                originY = canvasContainer.clientHeight / 2 - cy * globalScale;
+                updateZoomUI(); draw();
+            });
 
             modeDrawBtn.addEventListener('click', () => { if(drawType==='regular') drawType='polygon'; setMode('draw'); });
             modeSelectBtn.addEventListener('click', () => setMode('select'));
             drawPolygonBtn.addEventListener('click', () => setDrawType('polygon'));
             drawLineBtn.addEventListener('click', () => setDrawType('line'));
             drawCircleBtn.addEventListener('click', () => { setDrawType('circle'); tangentStartPoint = null; });
-            drawTextBtn.addEventListener('click', () => setDrawType('text'));
-            drawTangentBtn.addEventListener('click', () => { setDrawType('tangent'); tangentStartPoint = null; if(instructionBanner) instructionBanner.innerHTML = "💡 <strong>접선 모드:</strong> 원 외부의 <strong>한 점</strong>을 클릭하세요."; });
-            drawRegularPolygonBtn.addEventListener('click', () => { regPolyModal.classList.remove('hidden'); });
+            drawTangentBtn.addEventListener('click', () => { 
+                setDrawType('tangent'); 
+                tangentStartPoint = null; 
+                if(instructionBanner) instructionBanner.innerHTML = "💡 <strong>접선 모드:</strong> 원 외부의 <strong>한 점</strong>을 클릭하세요.";
+            });
+            drawRegularPolygonBtn.addEventListener('click', () => {
+                regPolyModal.classList.remove('hidden');
+            });
             
             presetSelectBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    presetSelectBtns.forEach(b => { b.classList.remove('active', 'bg-indigo-600', 'text-white', 'border-indigo-600'); b.classList.add('bg-white', 'text-gray-700', 'border-gray-300'); });
-                    btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300'); btn.classList.add('active', 'bg-indigo-600', 'text-white', 'border-indigo-600');
+                    presetSelectBtns.forEach(b => { 
+                        b.classList.remove('active', 'bg-indigo-600', 'text-white', 'border-indigo-600'); 
+                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300'); 
+                    });
+                    btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+                    btn.classList.add('active', 'bg-indigo-600', 'text-white', 'border-indigo-600');
                     
-                    const preset = btn.dataset.preset; regularPolyParams.preset = preset;
-                    sidesContainer.classList.add('hidden'); heightContainer.classList.add('hidden'); sectorAnglesContainer.classList.add('hidden');
+                    const preset = btn.dataset.preset;
+                    regularPolyParams.preset = preset;
                     
-                    if (preset === 'regular') { sidesContainer.classList.remove('hidden'); regPolyLengthLabel.innerText = '한 변의 길이 (cm)'; } 
-                    else if (preset === 'rectangle') { heightContainer.classList.remove('hidden'); regPolyLengthLabel.innerText = '가로 길이 (cm)'; regPolyHeightLabel.innerText = '세로 길이 (cm)'; } 
-                    else if (preset === 'right_triangle') { heightContainer.classList.remove('hidden'); regPolyLengthLabel.innerText = '밑변 길이 (cm)'; regPolyHeightLabel.innerText = '높이 길이 (cm)'; } 
-                    else if (preset === 'sector') { sectorAnglesContainer.classList.remove('hidden'); regPolyLengthLabel.innerText = '반지름 길이 (cm)'; }
+                    sidesContainer.classList.add('hidden');
+                    heightContainer.classList.add('hidden');
+                    sectorAnglesContainer.classList.add('hidden');
+                    
+                    if (preset === 'regular') {
+                        sidesContainer.classList.remove('hidden');
+                        regPolyLengthLabel.innerText = '한 변의 길이 (cm)';
+                    } else if (preset === 'rectangle') {
+                        heightContainer.classList.remove('hidden');
+                        regPolyLengthLabel.innerText = '가로 길이 (cm)';
+                        regPolyHeightLabel.innerText = '세로 길이 (cm)';
+                    } else if (preset === 'right_triangle') {
+                        heightContainer.classList.remove('hidden');
+                        regPolyLengthLabel.innerText = '밑변 길이 (cm)';
+                        regPolyHeightLabel.innerText = '높이 길이 (cm)';
+                    } else if (preset === 'sector') {
+                        sectorAnglesContainer.classList.remove('hidden');
+                        regPolyLengthLabel.innerText = '반지름 길이 (cm)';
+                    }
                 });
             });
 
-            closeRegPolyModal.addEventListener('click', () => regPolyModal.classList.add('hidden')); cancelRegPolyBtn.addEventListener('click', () => regPolyModal.classList.add('hidden'));
-            confirmRegPolyBtn.addEventListener('click', () => { regularPolyParams.sides = regPolySidesInput.value; regularPolyParams.lengthCm = regPolyLengthInput.value; regularPolyParams.heightCm = regPolyHeightInput.value; setDrawType('regular'); regPolyModal.classList.add('hidden'); showToast('🖱️ 캔버스에 중심점을 클릭하여 배치하세요'); });
+            closeRegPolyModal.addEventListener('click', () => regPolyModal.classList.add('hidden'));
+            cancelRegPolyBtn.addEventListener('click', () => regPolyModal.classList.add('hidden'));
+            confirmRegPolyBtn.addEventListener('click', () => {
+                regularPolyParams.sides = regPolySidesInput.value;
+                regularPolyParams.lengthCm = regPolyLengthInput.value;
+                regularPolyParams.heightCm = regPolyHeightInput.value;
+                setDrawType('regular');
+                regPolyModal.classList.add('hidden');
+                showToast('🖱️ 캔버스에 중심점을 클릭하여 배치하세요');
+            });
 
             undoBtn.addEventListener('click', undo);
-            clearBtn.addEventListener('click', () => { if (confirm('모든 도형을 지우시겠습니까?')) { shapes = []; currentShape = []; selectedShapeIndices = []; globalVertexCount = 0; updatePanels(null); saveHistory(); draw(); } });
-            groupBtn.addEventListener('click', groupSelectedShapes); ungroupBtn.addEventListener('click', ungroupSelectedShapes);
+            clearBtn.addEventListener('click', () => {
+                if (confirm('모든 도형을 지우시겠습니까?')) { shapes = []; currentShape = []; selectedShapeIndices = []; globalVertexCount = 0; updatePanels(null); saveHistory(); draw(); }
+            });
+            groupBtn.addEventListener('click', groupSelectedShapes);
+            ungroupBtn.addEventListener('click', ungroupSelectedShapes);
 
-            defaultAngleCheck.addEventListener('change', () => { shapes.forEach(s => { if(s.type !== 'text') s.forEach(p => { if (s.type === 'polygon' || s.type === 'sector') p.showAngle = defaultAngleCheck.checked; }); }); saveHistory(); draw(); updatePanels(lockedShapeIndex); });
-            defaultLengthCheck.addEventListener('change', () => { shapes.forEach(s => { if(s.type !== 'text') s.forEach(p => { if (s.type === 'polygon' || s.type === 'line' || s.type === 'circle' || s.type === 'sector') p.showLength = defaultLengthCheck.checked; }); }); saveHistory(); draw(); updatePanels(lockedShapeIndex); });
-            showGridCheck.addEventListener('change', () => draw()); showRulerCheck.addEventListener('change', () => draw());
+            defaultAngleCheck.addEventListener('change', () => { shapes.forEach(s => s.forEach(p => { if (s.type === 'polygon' || s.type === 'sector') p.showAngle = defaultAngleCheck.checked; })); saveHistory(); draw(); updatePanels(lockedShapeIndex); });
+            defaultLengthCheck.addEventListener('change', () => { shapes.forEach(s => s.forEach(p => { if (s.type === 'polygon' || s.type === 'line' || s.type === 'circle' || s.type === 'sector') p.showLength = defaultLengthCheck.checked; })); saveHistory(); draw(); updatePanels(lockedShapeIndex); });
+            showGridCheck.addEventListener('change', () => draw());
+            showRulerCheck.addEventListener('change', () => draw());
 
-            printSelectedBtn.addEventListener('click', printSelectedShapes); closePrintModal.addEventListener('click', closePrintPreviewModal); cancelPrintBtn.addEventListener('click', closePrintPreviewModal);
+            printSelectedBtn.addEventListener('click', printSelectedShapes);
+            closePrintModal.addEventListener('click', closePrintPreviewModal);
+            cancelPrintBtn.addEventListener('click', closePrintPreviewModal);
             execPrintBtn.addEventListener('click', () => {
                 const printWindow = window.open('', '_blank');
                 printWindow.document.write('<html><head><title>인쇄</title></head><body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;">');
                 printWindow.document.write('<img src="' + printPreviewImg.src + '" style="max-width:100%;max-height:100%;"/>');
                 printWindow.document.write('</body></html>');
-                printWindow.document.close(); printWindow.onload = () => { printWindow.focus(); printWindow.print(); printWindow.close(); };
+                printWindow.document.close();
+                printWindow.onload = () => { printWindow.focus(); printWindow.print(); printWindow.close(); };
             });
-            downloadSvgBtn.addEventListener('click', downloadSVG); downloadPngBtn.addEventListener('click', downloadPNG); downloadPdfBtn.addEventListener('click', downloadPDF);
+            downloadSvgBtn.addEventListener('click', downloadSVG);
+            downloadPngBtn.addEventListener('click', downloadPNG);
+            downloadPdfBtn.addEventListener('click', downloadPDF);
         }
 
         init();
